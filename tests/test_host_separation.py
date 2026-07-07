@@ -1,5 +1,7 @@
 """Everything lives on one domain: admin under /admin, tokens at the root."""
 
+import re
+
 from tests.conftest import BASE, make_link
 from tests.test_admin_auth import login
 
@@ -23,9 +25,27 @@ def test_admin_area_unreachable_without_session_even_via_token_shape(client):
     assert resp.status_code == 404
 
 
-def test_panel_link_urls_use_public_host(client):
+def test_panel_link_urls_use_request_host(client):
     login(client)
     from tests.test_admin_panel import create_link
 
-    resp = create_link(client, label="x")
-    assert b"https://garage.test/" in resp.data
+    resp = create_link(client)
+    assert b"http://garage.test/" in resp.data
+
+
+def test_panel_link_urls_follow_localhost(client):
+    LOCAL = "http://localhost:18000"
+    with client.session_transaction(base_url=LOCAL) as sess:
+        sess["email"] = "owner@example.com"
+    from tests.test_admin_panel import get_csrf
+
+    resp = client.get("/admin/", base_url=LOCAL)
+    match = re.search(rb'name="csrf_token" value="([^"]+)"', resp.data)
+    csrf = match.group(1).decode()
+
+    resp = client.post(
+        "/admin/links",
+        data={"amount": 1, "unit": "hours", "csrf_token": csrf},
+        base_url=LOCAL,
+    )
+    assert b"http://localhost:18000/" in resp.data

@@ -5,10 +5,8 @@ services:
     env_file: .env
     volumes:
       - gate-data:/data
-    ports:
-      # host port 18000 to avoid clashing with other local services;
-      # inside the container the app always listens on 8000 (what Dokploy/Traefik targets)
-      - "18000:8000"
+    expose:
+      - "8000"
 
 volumes:
   gate-data:

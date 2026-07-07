@@ -77,13 +77,17 @@ def auth_callback():
     return redirect(url_for("admin.panel"))
 
 
-def _render_panel(new_link_url=None):
+def _public_link_url(token):
+    return url_for("public.confirm", token=token, _external=True)
+
+
+def _render_panel(new_link_url=None, links_open=False):
     return render_template(
         "panel.html",
         links=db.list_active_links(get_conn()),
-        public_host=current_app.config["PUBLIC_HOST"],
         csrf_token=_csrf_token(),
         new_link_url=new_link_url,
+        links_open=links_open,
     )
 
 
@@ -97,14 +101,17 @@ def panel():
 @login_required
 def create_link():
     _check_csrf()
-    amount = request.form.get("amount", type=int)
-    unit = request.form.get("unit", "hours")
-    if amount is None or amount < 1 or unit not in ("minutes", "hours"):
+    minutes = request.form.get("minutes", type=int)
+    if minutes is None:
+        amount = request.form.get("amount", type=int)
+        unit = request.form.get("unit", "hours")
+        if amount is None or amount < 1 or unit not in ("minutes", "hours"):
+            abort(400)
+        minutes = amount if unit == "minutes" else amount * 60
+    if minutes < 1:
         abort(400)
-    minutes = amount if unit == "minutes" else amount * 60
-    label = request.form.get("label", "").strip() or None
-    link = db.create_link(get_conn(), duration_minutes=minutes, label=label)
-    url = f"https://{current_app.config['PUBLIC_HOST']}/{link['token']}"
+    link = db.create_link(get_conn(), duration_minutes=minutes, label=None)
+    url = _public_link_url(link["token"])
     return _render_panel(new_link_url=url)
 
 
@@ -113,4 +120,4 @@ def create_link():
 def revoke_link(link_id):
     _check_csrf()
     db.revoke_link(get_conn(), link_id)
-    return redirect(url_for("admin.panel"))
+    return _render_panel(links_open=True)

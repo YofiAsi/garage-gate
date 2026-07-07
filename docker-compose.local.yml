@@ -1,0 +1,4 @@
+services:
+  garage-gate:
+    ports:
+      - "18000:8000"

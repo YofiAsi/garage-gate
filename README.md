@@ -38,13 +38,21 @@ cp .env.example .env   # then fill in the blanks
 
 ### 4. Deploy with Dokploy
 
-Create a Compose (or Dockerfile) application pointing at this repo, set the
-env vars from `.env` in Dokploy's environment settings, and attach the domain
-`garage.asafshilo.com` to the service on port 8000. Dokploy/Traefik terminates
-SSL; public links live at `/<token>` and the admin panel at `/admin/`.
+`docker-compose.yml` is the production file — it builds the image, mounts
+the `gate-data` volume, and does **not** publish any host port. Dokploy's
+Traefik reaches the container over the internal Docker network, so nothing
+but Dokploy's own reverse proxy is ever exposed to the internet.
 
-The SQLite database lives on the `gate-data` volume (`/data/links.db`), so
-links survive redeploys.
+1. In Dokploy, create a **Compose** application pointing at this repo/branch
+   (it will use `docker-compose.yml` automatically).
+2. Set the env vars from `.env` in Dokploy's environment settings (or point
+   it at an env file) — never commit `.env` itself.
+3. Add a domain: `garage.asafshilo.com` → service `garage-gate`, container
+   port `8000`. Dokploy/Traefik terminates SSL and proxies to that port.
+
+Public links live at `/<token>`, the admin panel at `/admin/`. The SQLite
+database lives on the `gate-data` volume (`/data/links.db`), so links
+survive redeploys.
 
 ## Development
 
@@ -54,26 +62,30 @@ python -m venv .venv
 .venv/Scripts/python -m pytest
 ```
 
-Run locally (needs a filled `.env`; Flask dev server, hostnames won't match —
-use the test suite or Docker for realistic behavior):
+Run the containerized app locally (the production compose file publishes no
+port, so pass the local override to reach it from the host):
 
 ```
-.venv/Scripts/python -m flask --app wsgi run
+docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
 ```
+
+This publishes the app at `http://localhost:18000`. `docker-compose.local.yml`
+is dev-only and is never picked up by Dokploy (which runs `docker-compose.yml`
+alone).
 
 ### Testing Google login locally
 
 Add `http://localhost:18000/admin/auth/callback` as an extra authorized
 redirect URI in the Google console, set `INSECURE_HTTP=1` in your local
-`.env` (never in production), and `docker compose up`. The app builds the
-redirect URI from the request scheme (behind Traefik, `X-Forwarded-Proto`
-makes it https automatically).
+`.env` (never in production), and run the command above. The app builds the
+OAuth redirect URI from the request scheme (behind Traefik in production,
+`X-Forwarded-Proto` makes it https automatically).
 
 ## Notes / limitations
 
-- If the HA call fails after a link was claimed, the link stays consumed
-  (visitor sees an error page and can ask you for a new link). A log line
-  with the traceback is written.
+- If the HA call fails, the visitor sees an error page and can try again —
+  links are reusable, so a failed attempt doesn't burn the link. A log line
+  with the traceback is written server-side.
 - No rate limiting in the app; add Traefik middleware later if token probing
   ever becomes a concern (tokens are 256-bit random, so guessing is not
   realistic).

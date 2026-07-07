@@ -16,14 +16,14 @@ def test_allowlisted_session_sees_panel(client):
     login(client)
     resp = client.get("/admin/", base_url=ADMIN)
     assert resp.status_code == 200
-    assert b"Create link" in resp.data
+    assert b'id="create-form"' in resp.data
 
 
 def test_non_allowlisted_session_is_rejected(client):
     login(client, email="attacker@example.com")
     resp = client.get("/admin/", base_url=ADMIN)
     assert resp.status_code in (302, 403)
-    assert b"Create link" not in resp.data
+    assert b'id="create-form"' not in resp.data
 
 
 def test_callback_rejects_non_allowlisted_email(client, monkeypatch):

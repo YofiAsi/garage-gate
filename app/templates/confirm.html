@@ -38,7 +38,7 @@
       50%      { filter: brightness(1.12); }
     }
     #success { display: none; }
-    #success h1 { color: var(--green); font-size: 2.4rem;
+    #success h1 { color: var(--text); font-size: 2.4rem;
                   animation: pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1); }
     @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
     #failed { display: none; }
@@ -76,7 +76,7 @@
 <canvas id="confetti-canvas"></canvas>
 <script>
 (function () {
-  var HOLD_MS = 2000;
+  var HOLD_MS = 1000;
   var form = document.getElementById("open-form");
   var btn = document.getElementById("open-btn");
   var ring = document.getElementById("ring");

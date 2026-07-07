@@ -1,155 +1,195 @@
 {% extends "base.html" %}
 {% block htmlattrs %}lang="en"{% endblock %}
-{% block title %}Gate admin{% endblock %}
+{% block title %}Garage Gate{% endblock %}
 
 {% block style %}
-    body { place-items: start center; padding-top: 3rem; }
-    main.wide { width: 100%; max-width: 46rem; display: grid; gap: 1.25rem; }
+    main.wide {
+      width: 100%; max-width: 26rem;
+      display: grid; gap: 1rem;
+    }
+
     .panel-card {
       background: var(--card);
       border: 1px solid var(--card-border);
       border-radius: 18px;
-      padding: 1.5rem;
+      padding: 1.25rem;
       backdrop-filter: blur(12px);
-      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.35);
     }
-    header.top { display: flex; align-items: center; gap: 0.75rem; }
-    header.top .logo { font-size: 1.9rem; }
-    header.top h1 { font-size: 1.35rem; }
-    header.top p { color: var(--muted); font-size: 0.85rem; }
 
-    form.create { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: end; }
-    .field { display: grid; gap: 0.35rem; }
-    .field span { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
-    input, select {
-      font: inherit; color: var(--text);
-      background: rgba(255, 255, 255, 0.07);
-      border: 1px solid var(--card-border);
-      border-radius: 10px;
-      padding: 0.6rem 0.75rem;
+    .duration { display: grid; gap: 1rem; }
+    .duration-label {
+      font-size: 0.78rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.06em; text-align: center;
     }
-    input:focus, select:focus { outline: 2px solid #60a5fa66; border-color: #60a5fa; }
-    input[type="number"] { width: 5.5rem; }
-    select option { color: #111; }
-    .btn {
-      font: inherit; font-weight: 650; cursor: pointer;
-      border: 0; border-radius: 10px; padding: 0.65rem 1.2rem;
-      color: #fff; background: linear-gradient(180deg, #f87171, #dc2626);
-      box-shadow: 0 6px 16px rgba(220, 38, 38, 0.35);
+    .duration-value {
+      font-size: 2.5rem; font-weight: 700; text-align: center; line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .duration-value span { font-size: 1rem; font-weight: 500; color: var(--muted); margin-left: 0.25rem; }
+    input[type="range"] {
+      width: 100%; height: 0.35rem; appearance: none; cursor: pointer;
+      background: rgba(255, 255, 255, 0.12); border-radius: 999px;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none; width: 1.35rem; height: 1.35rem; border-radius: 50%;
+      background: linear-gradient(180deg, #7dd3fc, #38bdf8);
+      box-shadow: 0 4px 10px rgba(56, 189, 248, 0.22);
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 1.35rem; height: 1.35rem; border: 0; border-radius: 50%;
+      background: linear-gradient(180deg, #7dd3fc, #38bdf8);
+      box-shadow: 0 4px 10px rgba(56, 189, 248, 0.22);
+    }
+    .create-btn {
+      display: block; width: 100%; font: inherit; font-weight: 650; font-size: 1rem; cursor: pointer;
+      color: #fff; border: 0; border-radius: 12px; padding: 0.9rem;
+      text-align: center; text-decoration: none; box-sizing: border-box;
+      background: linear-gradient(180deg, #7dd3fc, #38bdf8);
+      box-shadow: 0 6px 14px rgba(56, 189, 248, 0.18);
       transition: transform 0.1s, filter 0.15s;
     }
-    .btn:hover { filter: brightness(1.08); }
-    .btn:active { transform: scale(0.97); }
-    .btn.ghost {
-      background: transparent; color: #fca5a5;
-      border: 1px solid #f871714d; box-shadow: none;
-      padding: 0.4rem 0.85rem; font-size: 0.85rem;
-    }
-    .btn.ghost:hover { background: #ef444422; }
+    .create-btn:active { transform: scale(0.97); filter: brightness(0.95); }
 
-    .new-link {
-      display: flex; gap: 0.6rem; align-items: center;
+    .result { display: grid; gap: 0.75rem; }
+    .actions { display: flex; justify-content: center; gap: 1rem; }
+    .icon-btn {
+      font: inherit; cursor: pointer;
+      color: var(--muted); background: transparent; border: 0;
+      border-radius: 14px; padding: 0.9rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: color 0.15s, background 0.15s;
+      text-decoration: none;
+    }
+    .icon-btn:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); }
+    .icon-btn:active { transform: scale(0.94); }
+    .icon-btn svg { width: 2rem; height: 2rem; }
+    .show-url-btn {
+      font: inherit; font-size: 0.82rem; cursor: pointer;
+      color: var(--muted); background: transparent; border: 0;
+      padding: 0.25rem 0; text-align: center;
+    }
+    .show-url-btn:hover { color: var(--text); }
+    .result code {
+      display: block; width: 100%; overflow-x: auto; white-space: nowrap;
+      font-size: 0.78rem; color: var(--green);
       background: #34d39914; border: 1px solid #34d39944;
-      border-radius: 12px; padding: 0.8rem 1rem;
+      border-radius: 12px; padding: 0.7rem 0.85rem;
     }
-    .new-link code {
-      flex: 1; overflow-x: auto; white-space: nowrap;
-      font-size: 0.85rem; color: var(--green);
-    }
-    .copy { font-size: 0.85rem; padding: 0.4rem 0.85rem; background: #10b981; box-shadow: none; }
+    .result code[hidden] { display: none; }
 
-    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-    th { text-align: left; color: var(--muted); font-size: 0.75rem;
-         text-transform: uppercase; letter-spacing: 0.07em;
-         padding: 0.35rem 0.6rem; }
-    td { padding: 0.6rem; border-top: 1px solid var(--card-border); vertical-align: middle; }
-    tr:hover td { background: rgba(255, 255, 255, 0.03); }
-    td code { font-size: 0.8rem; color: #93c5fd; }
-    .nowrap { white-space: nowrap; }
-    .empty { color: var(--muted); text-align: center; padding: 1.5rem 0; }
-    h2 { font-size: 1.05rem; margin-bottom: 0.9rem; }
+    details.links { color: var(--muted); }
+    details.links summary {
+      cursor: pointer; font-size: 0.85rem; padding: 0.25rem 0;
+      list-style: none; display: flex; align-items: center; justify-content: space-between;
+    }
+    details.links summary::-webkit-details-marker { display: none; }
+    .link-row {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.6rem 0; border-top: 1px solid var(--card-border);
+      font-size: 0.85rem;
+    }
+    .link-row .meta { flex: 1; min-width: 0; }
+    .link-row .meta .expires { color: var(--muted); font-size: 0.85rem; }
+    .revoke-btn {
+      font: inherit; font-size: 0.8rem; cursor: pointer;
+      color: #94a3b8; background: transparent; border: 1px solid #94a3b84d;
+      border-radius: 8px; padding: 0.35rem 0.7rem; flex-shrink: 0;
+    }
+    .revoke-btn:active { background: #94a3b822; }
+    .empty { color: var(--muted); font-size: 0.85rem; padding: 0.5rem 0; }
 {% endblock %}
 
 {% block body %}
 <main class="wide">
-  <header class="top">
-    <span class="logo">🚧</span>
-    <div>
-      <h1>Garage Gate</h1>
-      <p>temporary access links</p>
-    </div>
-  </header>
-
   <section class="panel-card">
-    <h2>New link</h2>
-    <form class="create" method="post" action="{{ url_for('admin.create_link') }}">
+    {% if not new_link_url %}
+    <form id="create-form" method="post" action="{{ url_for('admin.create_link') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <label class="field"><span>Valid for</span>
-        <input type="number" name="amount" min="1" value="1" required>
-      </label>
-      <label class="field"><span>Unit</span>
-        <select name="unit">
-          <option value="minutes">minutes</option>
-          <option value="hours" selected>hours</option>
-        </select>
-      </label>
-      <label class="field" style="flex:1; min-width: 10rem;"><span>Label</span>
-        <input type="text" name="label" placeholder="e.g. plumber" maxlength="60">
-      </label>
-      <button class="btn" type="submit">Create link</button>
+      <input type="hidden" name="amount" id="amount-field" value="1">
+      <input type="hidden" name="unit" value="hours">
+      <div class="duration">
+        <div class="duration-label">Duration</div>
+        <div class="duration-value" id="hours-display">1<span>hour</span></div>
+        <input type="range" id="hours-dial" min="1" max="24" value="1" aria-label="Hours">
+        <button class="create-btn" type="submit">Create link</button>
+      </div>
     </form>
-    {% if new_link_url %}
-    <div class="new-link" style="margin-top: 1rem;">
-      <code id="new-url">{{ new_link_url }}</code>
-      <button class="btn copy" type="button" onclick="copyUrl(this)">Copy</button>
+    {% else %}
+    <div class="result">
+      <div class="actions">
+        <button class="icon-btn" type="button" aria-label="Copy link" onclick="copyUrl(this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>
+        </button>
+        <a class="icon-btn" href="https://wa.me/?text={{ new_link_url | urlencode }}" target="_blank" rel="noopener" aria-label="Share on WhatsApp">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.01c5.46 0 9.9-4.45 9.9-9.91 0-2.65-1.03-5.13-2.9-7C17.18 3.04 14.7 2 12.04 2zm0 18.12h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.22 8.22 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.25-8.24 2.2 0 4.27.86 5.83 2.42a8.18 8.18 0 0 1 2.41 5.83c0 4.55-3.7 8.24-8.24 8.24zm4.52-6.17c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.13-.17.24-.64.8-.78.97-.14.17-.29.18-.53.06-.25-.12-1.05-.39-2-1.23-.74-.66-1.24-1.47-1.38-1.72-.15-.24-.02-.38.11-.5.11-.11.25-.29.37-.43.12-.15.16-.25.25-.42.08-.16.04-.31-.02-.43-.06-.12-.56-1.35-.77-1.85-.2-.48-.4-.42-.56-.42-.14-.01-.31-.01-.47-.01a.9.9 0 0 0-.65.3c-.22.24-.86.84-.86 2.04s.88 2.37 1 2.53c.13.17 1.73 2.64 4.19 3.7.59.25 1.04.4 1.4.51.59.19 1.12.16 1.55.1.47-.07 1.47-.6 1.68-1.18.2-.58.2-1.08.14-1.18-.06-.1-.22-.16-.47-.28z"/></svg>
+        </a>
+      </div>
+      <button class="show-url-btn" type="button" onclick="toggleUrl(this)">Show</button>
+      <code id="new-url" hidden>{{ new_link_url }}</code>
+      <a class="create-btn" href="{{ url_for('admin.panel') }}">Create another</a>
     </div>
     {% endif %}
   </section>
 
-  <section class="panel-card">
-    <h2>Active links</h2>
+  <details class="links"{% if links_open %} open{% endif %}>
+    <summary>Active links ({{ links | length }})</summary>
     {% if links %}
-    <div style="overflow-x: auto;">
-      <table>
-        <tr><th>Label</th><th>Created</th><th>Expires</th><th>Link</th><th></th></tr>
-        {% for link in links %}
-        <tr>
-          <td class="nowrap">{{ link.label or "—" }}</td>
-          <td class="nowrap" data-ts="{{ link.created_at }}"></td>
-          <td class="nowrap" data-ts="{{ link.expires_at }}"></td>
-          <td><code>https://{{ public_host }}/{{ link.token }}</code></td>
-          <td>
-            <form method="post" action="{{ url_for('admin.revoke_link', link_id=link.id) }}">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-              <button class="btn ghost" type="submit">Revoke</button>
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
-      </table>
-    </div>
+      {% for link in links %}
+      <div class="link-row">
+        <div class="meta">
+          <div class="expires">expires <span data-ts="{{ link.expires_at }}"></span></div>
+        </div>
+        <form method="post" action="{{ url_for('admin.revoke_link', link_id=link.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="revoke-btn" type="submit">Revoke</button>
+        </form>
+      </div>
+      {% endfor %}
     {% else %}
     <p class="empty">No active links</p>
     {% endif %}
-  </section>
+  </details>
 </main>
 {% endblock %}
 
 {% block scripts %}
 <script>
+  (function () {
+    var dial = document.getElementById("hours-dial");
+    if (!dial) return;
+    var display = document.getElementById("hours-display");
+    var amount = document.getElementById("amount-field");
+    function syncHours() {
+      var h = dial.value;
+      amount.value = h;
+      display.innerHTML = h + "<span>" + (h === "1" ? "hour" : "hours") + "</span>";
+    }
+    dial.addEventListener("input", syncHours);
+    syncHours();
+  })();
+
+  function toggleUrl(btn) {
+    var url = document.getElementById("new-url");
+    var show = url.hidden;
+    url.hidden = !show;
+    btn.textContent = show ? "Hide" : "Show";
+  }
+
   function copyUrl(btn) {
     var text = document.getElementById("new-url").textContent;
     navigator.clipboard.writeText(text).then(function () {
-      btn.textContent = "Copied!";
-      setTimeout(function () { btn.textContent = "Copy"; }, 1500);
+      var original = btn.innerHTML;
+      btn.setAttribute("aria-label", "Copied!");
+      setTimeout(function () {
+        btn.innerHTML = original;
+        btn.setAttribute("aria-label", "Copy link");
+      }, 1500);
     });
   }
-  // render UTC timestamps in the admin's local time
-  document.querySelectorAll("[data-ts]").forEach(function (td) {
-    var d = new Date(td.getAttribute("data-ts"));
-    td.textContent = d.toLocaleString(undefined, {
-      day: "2-digit", month: "2-digit",
-      hour: "2-digit", minute: "2-digit"
+  document.querySelectorAll("[data-ts]").forEach(function (el) {
+    var d = new Date(el.getAttribute("data-ts"));
+    el.textContent = d.toLocaleString(undefined, {
+      day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
     });
   });
 </script>

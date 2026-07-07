@@ -11,10 +11,10 @@ def get_csrf(client):
     return match.group(1).decode()
 
 
-def create_link(client, amount=2, unit="hours", label="guest"):
+def create_link(client, amount=2, unit="hours"):
     return client.post(
         "/admin/links",
-        data={"amount": amount, "unit": unit, "label": label, "csrf_token": get_csrf(client)},
+        data={"amount": amount, "unit": unit, "csrf_token": get_csrf(client)},
         base_url=ADMIN,
         follow_redirects=True,
     )
@@ -22,13 +22,11 @@ def create_link(client, amount=2, unit="hours", label="guest"):
 
 def test_create_link_shows_public_url_and_appears_in_list(client):
     login(client)
-    resp = create_link(client, label="plumber")
+    resp = create_link(client)
     assert resp.status_code == 200
-    match = re.search(rb"https://garage\.test/([\w-]+)", resp.data)
+    match = re.search(rb"http://garage\.test/([\w-]+)", resp.data)
     assert match, "panel must show the new public URL"
     token = match.group(1).decode()
-    assert b"plumber" in resp.data
-    # the link actually works on the public side
     assert "ללחוץ אאאארוך".encode() in client.get(f"/{token}", base_url=PUBLIC).data
 
 
@@ -60,10 +58,10 @@ def test_revoke_removes_from_list_and_kills_public_link(client, app):
         f"/admin/links/{link['id']}/revoke",
         data={"csrf_token": csrf},
         base_url=ADMIN,
-        follow_redirects=True,
     )
     assert resp.status_code == 200
     assert link["token"].encode() not in resp.data
+    assert b'<details class="links" open>' in resp.data
     assert "הלינק לא טוב".encode() in client.get(f"/{link['token']}", base_url=PUBLIC).data
 
 
@@ -76,13 +74,46 @@ def test_revoke_requires_auth(client, app):
 
 def test_minutes_unit_creates_short_expiry(client, app):
     login(client)
-    create_link(client, amount=5, unit="minutes", label="quick")
+    create_link(client, amount=5, unit="minutes")
     from app import db
 
     conn = db.connect(app.config["DB_PATH"])
-    row = conn.execute("SELECT created_at, expires_at FROM links WHERE label='quick'").fetchone()
+    row = conn.execute("SELECT created_at, expires_at FROM links ORDER BY id DESC LIMIT 1").fetchone()
     conn.close()
     from datetime import datetime
 
     delta = datetime.fromisoformat(row["expires_at"]) - datetime.fromisoformat(row["created_at"])
     assert delta.total_seconds() == 5 * 60
+
+
+def test_hours_dial_creates_link(client, app):
+    login(client)
+    resp = create_link(client, amount=4, unit="hours")
+    from app import db
+
+    conn = db.connect(app.config["DB_PATH"])
+    row = conn.execute("SELECT created_at, expires_at FROM links ORDER BY id DESC LIMIT 1").fetchone()
+    conn.close()
+    from datetime import datetime
+
+    delta = datetime.fromisoformat(row["expires_at"]) - datetime.fromisoformat(row["created_at"])
+    assert delta.total_seconds() == 4 * 60 * 60
+    assert resp.status_code == 200
+    assert b'id="create-form"' not in resp.data
+    assert b'id="new-url"' in resp.data
+    assert b"Show" in resp.data
+
+
+def test_new_link_response_includes_copy_and_whatsapp_share(client):
+    login(client)
+    resp = create_link(client)
+    assert b'id="new-url"' in resp.data
+    assert b"Show" in resp.data
+    assert b"Create another" in resp.data
+    assert b"wa.me" in resp.data
+    match = re.search(rb"http://garage\.test/[\w-]+", resp.data)
+    assert match
+    from urllib.parse import quote
+
+    # Jinja's urlencode leaves "/" unescaped, which is valid inside a query string
+    assert quote(match.group(0).decode(), safe="/").encode() in resp.data
