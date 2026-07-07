@@ -2,17 +2,17 @@
 
 Self-hosted temporary-link service for opening a gate through Home Assistant.
 
-- **Public:** `https://garage.asafshilo.com/<token>` shows an "Open gate" button.
-  Tapping it consumes the single-use link and triggers the HA script that opens
-  the gate. Expired / used / revoked / unknown tokens all show the same generic
+- **Public:** `https://garage.asafshilo.com/<token>` shows a hold-to-open
+  button; holding it 2 seconds triggers the HA webhook that opens the gate.
+  Links can be used any number of times until they expire or are revoked.
+  Expired / revoked / unknown tokens all show the same generic
   "link invalid" page.
 - **Admin:** `https://garage.asafshilo.com/admin/` — Google login (allowlisted
   emails only) with a form to create links (expiry in minutes/hours, optional
   label) and a list of active links with revoke buttons.
 
-Links expire on **first use or the time limit, whichever comes first**.
-Visiting a link (GET) does *not* consume it — only tapping the button does —
-so WhatsApp/Telegram link previews can't burn a token.
+Links expire on their **time limit** (or when revoked from the admin panel);
+using a link never invalidates it.
 
 ## Setup
 

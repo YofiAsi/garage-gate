@@ -21,11 +21,11 @@ def confirm(token):
 
 @bp.post("/<token>/open")
 def open_gate(token):
-    if not db.claim_link(get_conn(), token):
+    if not db.use_link(get_conn(), token):
         return _invalid()
     try:
         current_app.config["GATE_OPENER"]()
     except Exception:
-        log.exception("Home Assistant gate call failed (token consumed)")
+        log.exception("Home Assistant gate call failed")
         return render_template("error.html"), 500
     return render_template("opening.html")

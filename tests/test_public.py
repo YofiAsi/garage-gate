@@ -27,28 +27,33 @@ def test_post_opens_gate_once(client, app, gate):
     assert gate.calls == 1
 
 
-def test_second_post_is_invalid_and_does_not_open(client, app, gate):
+def test_link_is_reusable_until_expiry(client, app, gate):
     link = make_link(app)
     post_open(client, link["token"])
     resp = post_open(client, link["token"])
-    assert gate.calls == 1
-    assert "הלינק לא טוב".encode() in resp.data
+    assert gate.calls == 2
+    assert "תודווווות".encode() in resp.data
+    # page still shows the button afterwards
+    assert get_page(client, link["token"]).status_code == 200
 
 
 def test_invalid_reasons_are_indistinguishable(client, app, gate):
     expired = make_link(app, minutes=-5)
-    used = make_link(app)
-    post_open(client, used["token"])
+    revoked = make_link(app)
+    from app import db as dbm
+    conn = dbm.connect(app.config["DB_PATH"])
+    dbm.revoke_link(conn, revoked["id"])
+    conn.close()
 
     bodies = {
         get_page(client, "nonexistent-token").data,
         get_page(client, expired["token"]).data,
-        get_page(client, used["token"]).data,
+        get_page(client, revoked["token"]).data,
     }
     statuses = {
         get_page(client, "nonexistent-token").status_code,
         get_page(client, expired["token"]).status_code,
-        get_page(client, used["token"]).status_code,
+        get_page(client, revoked["token"]).status_code,
     }
     assert len(bodies) == 1
     assert len(statuses) == 1

@@ -48,7 +48,7 @@ def create_link(conn, duration_minutes, label):
     }
 
 
-_VALID_WHERE = "used_at IS NULL AND revoked = 0 AND expires_at > ?"
+_VALID_WHERE = "revoked = 0 AND expires_at > ?"
 
 
 def list_active_links(conn):
@@ -67,8 +67,9 @@ def is_link_valid(conn, token):
     return row is not None
 
 
-def claim_link(conn, token):
-    """Atomically mark a link used. Returns True only for the first valid claim."""
+def use_link(conn, token):
+    """Record a use (used_at = last use) without invalidating the link.
+    Returns True iff the link is currently valid."""
     now = _now().isoformat()
     cur = conn.execute(
         f"UPDATE links SET used_at = ? WHERE token = ? AND {_VALID_WHERE}",

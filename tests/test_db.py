@@ -30,33 +30,34 @@ def test_expired_link_is_not_active(conn):
     assert db.list_active_links(conn) == []
 
 
-def test_claim_link_succeeds_once(conn):
+def test_use_link_is_repeatable_until_expiry(conn):
     link = db.create_link(conn, duration_minutes=60, label=None)
-    assert db.claim_link(conn, link["token"]) is True
-    assert db.claim_link(conn, link["token"]) is False
+    assert db.use_link(conn, link["token"]) is True
+    assert db.use_link(conn, link["token"]) is True
+    assert db.use_link(conn, link["token"]) is True
 
 
-def test_claim_unknown_token_fails(conn):
-    assert db.claim_link(conn, "no-such-token") is False
+def test_used_link_stays_active_and_valid(conn):
+    link = db.create_link(conn, duration_minutes=60, label=None)
+    db.use_link(conn, link["token"])
+    assert [l["token"] for l in db.list_active_links(conn)] == [link["token"]]
+    assert db.is_link_valid(conn, link["token"]) is True
 
 
-def test_claim_expired_link_fails(conn):
+def test_use_unknown_token_fails(conn):
+    assert db.use_link(conn, "no-such-token") is False
+
+
+def test_use_expired_link_fails(conn):
     link = db.create_link(conn, duration_minutes=-5, label=None)
-    assert db.claim_link(conn, link["token"]) is False
+    assert db.use_link(conn, link["token"]) is False
 
 
-def test_revoked_link_cannot_be_claimed_and_is_not_active(conn):
+def test_revoked_link_cannot_be_used_and_is_not_active(conn):
     link = db.create_link(conn, duration_minutes=60, label=None)
     db.revoke_link(conn, link["id"])
     assert db.list_active_links(conn) == []
-    assert db.claim_link(conn, link["token"]) is False
-
-
-def test_peek_link_is_valid_does_not_consume(conn):
-    link = db.create_link(conn, duration_minutes=60, label=None)
-    assert db.is_link_valid(conn, link["token"]) is True
-    assert db.is_link_valid(conn, link["token"]) is True
-    assert db.claim_link(conn, link["token"]) is True
+    assert db.use_link(conn, link["token"]) is False
 
 
 def test_expires_at_matches_duration(conn):
