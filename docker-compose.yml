@@ -7,6 +7,18 @@ services:
       - gate-data:/data
     expose:
       - "8000"
+    extra_hosts:
+      # "yofiserver" is a Tailscale MagicDNS name, not resolvable from
+      # inside a plain container. Home Assistant is bound to the Tailscale
+      # interface only (confirmed: unreachable on the LAN IP, reachable on
+      # the Tailscale IP), so this must be the Tailscale IP, not the LAN
+      # IP. Since Dokploy runs on the same HomeLab box as Home Assistant,
+      # the container reaches it through the host's own tailscale0 route —
+      # no Tailscale client needed inside the container. If Dokploy ever
+      # moves to a different machine, this will need a Tailscale
+      # sidecar/client on that host instead. Update this IP if it changes
+      # (check with `tailscale status` on the HomeLab server).
+      - "yofiserver:100.69.227.53"
 
 volumes:
   gate-data:

@@ -30,6 +30,16 @@ and put its URL in `.env` as `HA_WEBHOOK_URL`
 (e.g. `http://yofiserver:8123/api/webhook/<webhook-id>`). The webhook id is
 the secret — it is only ever used server-side.
 
+`yofiserver` is a Tailscale MagicDNS name, not a plain LAN hostname, and HA
+is bound only to the Tailscale interface (not the raw LAN IP). A container
+has no Tailscale client of its own, so `docker-compose.yml` maps that
+hostname to HA's Tailscale IP directly via `extra_hosts` — this works because
+Dokploy runs on the same host as Home Assistant, so the container reaches it
+through the host's own `tailscale0` route. If that IP ever changes, or if
+this app is ever deployed on a different machine than the HA host, update
+(or replace) that `extra_hosts` entry — check the current IP with
+`tailscale status` on the HomeLab server.
+
 ### 3. Environment
 
 ```
