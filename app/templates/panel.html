@@ -1,44 +1,155 @@
 {% extends "base.html" %}
 {% block title %}Gate admin{% endblock %}
-{% block content %}
-<h1>Gate admin</h1>
 
-<form method="post" action="{{ url_for('admin.create_link') }}">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <label>Valid for
-    <input type="number" name="amount" min="1" value="1" required>
-  </label>
-  <select name="unit">
-    <option value="minutes">minutes</option>
-    <option value="hours" selected>hours</option>
-  </select>
-  <label>Label <input type="text" name="label" placeholder="e.g. plumber"></label>
-  <button class="open" type="submit">Create link</button>
-</form>
+{% block style %}
+    body { place-items: start center; padding-top: 3rem; }
+    main.wide { width: 100%; max-width: 46rem; display: grid; gap: 1.25rem; }
+    .panel-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 1.5rem;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.35);
+    }
+    header.top { display: flex; align-items: center; gap: 0.75rem; }
+    header.top .logo { font-size: 1.9rem; }
+    header.top h1 { font-size: 1.35rem; }
+    header.top p { color: var(--muted); font-size: 0.85rem; }
 
-{% if new_link_url %}
-<p><strong>New link:</strong> <code>{{ new_link_url }}</code></p>
-{% endif %}
+    form.create { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: end; }
+    .field { display: grid; gap: 0.35rem; }
+    .field span { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    input, select {
+      font: inherit; color: var(--text);
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 0.6rem 0.75rem;
+    }
+    input:focus, select:focus { outline: 2px solid #60a5fa66; border-color: #60a5fa; }
+    input[type="number"] { width: 5.5rem; }
+    select option { color: #111; }
+    .btn {
+      font: inherit; font-weight: 650; cursor: pointer;
+      border: 0; border-radius: 10px; padding: 0.65rem 1.2rem;
+      color: #fff; background: linear-gradient(180deg, #f87171, #dc2626);
+      box-shadow: 0 6px 16px rgba(220, 38, 38, 0.35);
+      transition: transform 0.1s, filter 0.15s;
+    }
+    .btn:hover { filter: brightness(1.08); }
+    .btn:active { transform: scale(0.97); }
+    .btn.ghost {
+      background: transparent; color: #fca5a5;
+      border: 1px solid #f871714d; box-shadow: none;
+      padding: 0.4rem 0.85rem; font-size: 0.85rem;
+    }
+    .btn.ghost:hover { background: #ef444422; }
 
-{% if links %}
-<table>
-  <tr><th>Label</th><th>Created</th><th>Expires</th><th>Link</th><th></th></tr>
-  {% for link in links %}
-  <tr>
-    <td>{{ link.label or "—" }}</td>
-    <td>{{ link.created_at }}</td>
-    <td>{{ link.expires_at }}</td>
-    <td><code>https://{{ public_host }}/{{ link.token }}</code></td>
-    <td>
-      <form method="post" action="{{ url_for('admin.revoke_link', link_id=link.id) }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <button type="submit">Revoke</button>
-      </form>
-    </td>
-  </tr>
-  {% endfor %}
-</table>
-{% else %}
-<p class="muted">No active links.</p>
-{% endif %}
+    .new-link {
+      display: flex; gap: 0.6rem; align-items: center;
+      background: #34d39914; border: 1px solid #34d39944;
+      border-radius: 12px; padding: 0.8rem 1rem;
+    }
+    .new-link code {
+      flex: 1; overflow-x: auto; white-space: nowrap;
+      font-size: 0.85rem; color: var(--green);
+    }
+    .copy { font-size: 0.85rem; padding: 0.4rem 0.85rem; background: #10b981; box-shadow: none; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th { text-align: left; color: var(--muted); font-size: 0.75rem;
+         text-transform: uppercase; letter-spacing: 0.07em;
+         padding: 0.35rem 0.6rem; }
+    td { padding: 0.6rem; border-top: 1px solid var(--card-border); vertical-align: middle; }
+    tr:hover td { background: rgba(255, 255, 255, 0.03); }
+    td code { font-size: 0.8rem; color: #93c5fd; }
+    .nowrap { white-space: nowrap; }
+    .empty { color: var(--muted); text-align: center; padding: 1.5rem 0; }
+    h2 { font-size: 1.05rem; margin-bottom: 0.9rem; }
+{% endblock %}
+
+{% block body %}
+<main class="wide">
+  <header class="top">
+    <span class="logo">🚧</span>
+    <div>
+      <h1>Garage Gate</h1>
+      <p>temporary access links</p>
+    </div>
+  </header>
+
+  <section class="panel-card">
+    <h2>New link</h2>
+    <form class="create" method="post" action="{{ url_for('admin.create_link') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label class="field"><span>Valid for</span>
+        <input type="number" name="amount" min="1" value="1" required>
+      </label>
+      <label class="field"><span>Unit</span>
+        <select name="unit">
+          <option value="minutes">minutes</option>
+          <option value="hours" selected>hours</option>
+        </select>
+      </label>
+      <label class="field" style="flex:1; min-width: 10rem;"><span>Label</span>
+        <input type="text" name="label" placeholder="e.g. plumber" maxlength="60">
+      </label>
+      <button class="btn" type="submit">Create link</button>
+    </form>
+    {% if new_link_url %}
+    <div class="new-link" style="margin-top: 1rem;">
+      <code id="new-url">{{ new_link_url }}</code>
+      <button class="btn copy" type="button" onclick="copyUrl(this)">Copy</button>
+    </div>
+    {% endif %}
+  </section>
+
+  <section class="panel-card">
+    <h2>Active links</h2>
+    {% if links %}
+    <div style="overflow-x: auto;">
+      <table>
+        <tr><th>Label</th><th>Created</th><th>Expires</th><th>Link</th><th></th></tr>
+        {% for link in links %}
+        <tr>
+          <td class="nowrap">{{ link.label or "—" }}</td>
+          <td class="nowrap" data-ts="{{ link.created_at }}"></td>
+          <td class="nowrap" data-ts="{{ link.expires_at }}"></td>
+          <td><code>https://{{ public_host }}/{{ link.token }}</code></td>
+          <td>
+            <form method="post" action="{{ url_for('admin.revoke_link', link_id=link.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button class="btn ghost" type="submit">Revoke</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% else %}
+    <p class="empty">No active links</p>
+    {% endif %}
+  </section>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function copyUrl(btn) {
+    var text = document.getElementById("new-url").textContent;
+    navigator.clipboard.writeText(text).then(function () {
+      btn.textContent = "Copied!";
+      setTimeout(function () { btn.textContent = "Copy"; }, 1500);
+    });
+  }
+  // render UTC timestamps in the admin's local time
+  document.querySelectorAll("[data-ts]").forEach(function (td) {
+    var d = new Date(td.getAttribute("data-ts"));
+    td.textContent = d.toLocaleString(undefined, {
+      day: "2-digit", month: "2-digit",
+      hour: "2-digit", minute: "2-digit"
+    });
+  });
+</script>
 {% endblock %}

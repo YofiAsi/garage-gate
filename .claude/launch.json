@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "garage-gate",
+      "runtimeExecutable": "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe",
+      "runtimeArgs": ["compose", "up"],
+      "port": 18000
+    }
+  ]
+}

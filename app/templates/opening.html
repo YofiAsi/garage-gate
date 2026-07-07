@@ -1,6 +1,71 @@
 {% extends "base.html" %}
 {% block title %}Gate opening{% endblock %}
+
+{% block style %}
+    h1 { color: var(--green); font-size: 1.8rem; }
+    .icon { animation: pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1); }
+    @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+    #confetti-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh;
+                       pointer-events: none; z-index: 10; }
+{% endblock %}
+
 {% block content %}
-<h1>Gate opening 🚗</h1>
-<p class="muted">You can drive in. This link has now been used.</p>
+<span class="icon">🚗💨</span>
+<h1>Gate opening!</h1>
+<p class="muted">Come on in. This link has now been used.</p>
+{% endblock %}
+
+{% block scripts %}
+<canvas id="confetti-canvas"></canvas>
+<script>
+(function () {
+  var canvas = document.getElementById("confetti-canvas");
+  var ctx = canvas.getContext("2d");
+  var dpr = window.devicePixelRatio || 1;
+  function size() {
+    canvas.width = innerWidth * dpr;
+    canvas.height = innerHeight * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  size();
+  addEventListener("resize", size);
+  var colors = ["#ef4444", "#f59e0b", "#34d399", "#38bdf8", "#a78bfa", "#f472b6", "#facc15"];
+  var pieces = [];
+  for (var i = 0; i < 160; i++) {
+    pieces.push({
+      x: Math.random() * innerWidth,
+      y: -20 - Math.random() * innerHeight,
+      w: 6 + Math.random() * 6,
+      h: 10 + Math.random() * 8,
+      vy: 2 + Math.random() * 3,
+      vx: -1 + Math.random() * 2,
+      rot: Math.random() * Math.PI,
+      vr: -0.1 + Math.random() * 0.2,
+      color: colors[(Math.random() * colors.length) | 0],
+      sway: Math.random() * Math.PI * 2
+    });
+  }
+  var start = performance.now();
+  (function frame(t) {
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    var alive = false;
+    for (var p of pieces) {
+      p.sway += 0.05;
+      p.x += p.vx + Math.sin(p.sway) * 1.2;
+      p.y += p.vy;
+      p.rot += p.vr;
+      if (p.y < innerHeight + 30) alive = true;
+      else if (t - start < 4000) { p.y = -20; p.x = Math.random() * innerWidth; }
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    }
+    if (alive) requestAnimationFrame(frame);
+    else ctx.clearRect(0, 0, innerWidth, innerHeight);
+  })(start);
+})();
+</script>
 {% endblock %}

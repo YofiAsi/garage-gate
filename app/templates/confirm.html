@@ -1,9 +1,147 @@
 {% extends "base.html" %}
 {% block title %}Open gate{% endblock %}
+
+{% block style %}
+    main.card { max-width: 24rem; }
+    .stage { display: grid; gap: 1.4rem; justify-items: center; }
+    .big-red {
+      -webkit-appearance: none; appearance: none;
+      width: 13rem; height: 13rem; border-radius: 50%;
+      border: 0; cursor: pointer;
+      color: #fff; font: inherit; font-size: 1.5rem; font-weight: 800;
+      letter-spacing: 0.01em; text-transform: uppercase; line-height: 1.25;
+      background: radial-gradient(circle at 50% 32%, #ff6b5e 0%, #ef4444 45%, #b91c1c 100%);
+      box-shadow:
+        0 14px 34px rgba(239, 68, 68, 0.45),
+        inset 0 -10px 18px rgba(0, 0, 0, 0.35),
+        inset 0 8px 14px rgba(255, 255, 255, 0.28),
+        0 0 0 12px rgba(239, 68, 68, 0.12);
+      transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.2s;
+      animation: breathe 2.6s ease-in-out infinite;
+    }
+    .big-red:active { transform: scale(0.94); }
+    .big-red:disabled { filter: saturate(0.4) brightness(0.75); cursor: default; animation: none; }
+    @keyframes breathe {
+      0%, 100% { box-shadow: 0 14px 34px rgba(239,68,68,.45), inset 0 -10px 18px rgba(0,0,0,.35),
+                 inset 0 8px 14px rgba(255,255,255,.28), 0 0 0 10px rgba(239,68,68,.10); }
+      50%      { box-shadow: 0 14px 40px rgba(239,68,68,.60), inset 0 -10px 18px rgba(0,0,0,.35),
+                 inset 0 8px 14px rgba(255,255,255,.28), 0 0 0 18px rgba(239,68,68,.16); }
+    }
+    #success { display: none; }
+    #success h1 { color: var(--green); font-size: 1.8rem; }
+    #success .icon { animation: pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1); }
+    @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+    #confetti-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh;
+                       pointer-events: none; z-index: 10; }
+{% endblock %}
+
 {% block content %}
-<h1>Ready to open the gate?</h1>
-<p class="muted">This link works once.</p>
-<form method="post" action="/{{ token }}/open">
-  <button class="open" type="submit">Open gate</button>
-</form>
+<div id="ready" class="stage">
+  <h1>Welcome 👋</h1>
+  <form id="open-form" method="post" action="/{{ token }}/open">
+    <button id="open-btn" class="big-red" type="submit">Open<br>gate</button>
+  </form>
+  <p class="muted">Press once, drive in.<br>This link stops working after use.</p>
+</div>
+
+<div id="success" class="stage">
+  <span class="icon">🚗💨</span>
+  <h1>Gate opening!</h1>
+  <p class="muted">Come on in. This link has now been used.</p>
+</div>
+
+<div id="failed" class="stage" style="display:none">
+  <span class="icon">😕</span>
+  <h1>Something went wrong</h1>
+  <p class="muted">The gate could not be opened. Contact the person who sent you this link.</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<canvas id="confetti-canvas"></canvas>
+<script>
+(function () {
+  var form = document.getElementById("open-form");
+  var btn = document.getElementById("open-btn");
+
+  function buzz(pattern) {
+    if (navigator.vibrate) navigator.vibrate(pattern); // Android only; iOS has no vibration API
+  }
+
+  form.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    buzz(60);
+    btn.disabled = true;
+    btn.innerHTML = "Opening&hellip;";
+    var ok = false, invalid = false;
+    try {
+      var resp = await fetch(form.action, { method: "POST" });
+      ok = resp.ok;
+      invalid = resp.status === 404;
+    } catch (err) { /* network failure */ }
+    if (ok) {
+      document.getElementById("ready").style.display = "none";
+      document.getElementById("success").style.display = "grid";
+      buzz([120, 60, 120, 60, 250]);
+      confetti();
+    } else if (invalid) {
+      window.location.reload(); // server renders the generic invalid page
+    } else {
+      document.getElementById("ready").style.display = "none";
+      document.getElementById("failed").style.display = "grid";
+    }
+  });
+
+  function confetti() {
+    var canvas = document.getElementById("confetti-canvas");
+    var ctx = canvas.getContext("2d");
+    var dpr = window.devicePixelRatio || 1;
+    function size() {
+      canvas.width = innerWidth * dpr;
+      canvas.height = innerHeight * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    size();
+    addEventListener("resize", size);
+
+    var colors = ["#ef4444", "#f59e0b", "#34d399", "#38bdf8", "#a78bfa", "#f472b6", "#facc15"];
+    var pieces = [];
+    for (var i = 0; i < 160; i++) {
+      pieces.push({
+        x: Math.random() * innerWidth,
+        y: -20 - Math.random() * innerHeight,
+        w: 6 + Math.random() * 6,
+        h: 10 + Math.random() * 8,
+        vy: 2 + Math.random() * 3,
+        vx: -1 + Math.random() * 2,
+        rot: Math.random() * Math.PI,
+        vr: -0.1 + Math.random() * 0.2,
+        color: colors[(Math.random() * colors.length) | 0],
+        sway: Math.random() * Math.PI * 2
+      });
+    }
+    var start = performance.now();
+    (function frame(t) {
+      ctx.clearRect(0, 0, innerWidth, innerHeight);
+      var alive = false;
+      for (var p of pieces) {
+        p.sway += 0.05;
+        p.x += p.vx + Math.sin(p.sway) * 1.2;
+        p.y += p.vy;
+        p.rot += p.vr;
+        if (p.y < innerHeight + 30) alive = true;
+        else if (t - start < 4000) { p.y = -20; p.x = Math.random() * innerWidth; }
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      }
+      if (alive) requestAnimationFrame(frame);
+      else ctx.clearRect(0, 0, innerWidth, innerHeight);
+    })(start);
+  }
+})();
+</script>
 {% endblock %}

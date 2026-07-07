@@ -6,19 +6,50 @@
   <meta name="robots" content="noindex">
   <title>{% block title %}Gate{% endblock %}</title>
   <style>
-    body { font-family: system-ui, sans-serif; display: flex; min-height: 100vh;
-           margin: 0; align-items: center; justify-content: center; background: #f4f4f5; }
-    main { text-align: center; padding: 2rem; }
-    h1 { font-size: 1.4rem; }
-    button.open { font-size: 1.5rem; padding: 1rem 2.5rem; border: 0; border-radius: 12px;
-                  background: #16a34a; color: white; cursor: pointer; }
-    button.open:active { background: #15803d; }
-    .muted { color: #71717a; }
+    :root {
+      --text: #f4f6fb;
+      --muted: #93a0b8;
+      --card: rgba(255, 255, 255, 0.055);
+      --card-border: rgba(255, 255, 255, 0.09);
+      --accent: #ef4444;
+      --green: #34d399;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1100px 700px at 50% -20%, #2b3a55 0%, transparent 60%),
+        radial-gradient(900px 600px at 110% 110%, #1d2b45 0%, transparent 55%),
+        #0b1120;
+      display: grid;
+      place-items: center;
+      padding: 1.5rem;
+    }
+    main.card {
+      width: 100%;
+      max-width: 26rem;
+      text-align: center;
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 2.75rem 2rem;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+    }
+    h1 { font-size: 1.55rem; font-weight: 700; letter-spacing: -0.02em; }
+    p.muted { color: var(--muted); font-size: 0.95rem; line-height: 1.5; }
+    .icon { font-size: 3.2rem; line-height: 1; margin-bottom: 1rem; display: block; }
+    {% block style %}{% endblock %}
   </style>
 </head>
 <body>
-<main>
+{% block body %}
+<main class="card">
 {% block content %}{% endblock %}
 </main>
+{% endblock %}
+{% block scripts %}{% endblock %}
 </body>
 </html>
