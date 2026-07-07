@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}לפתוח את השער{% endblock %}
+{% block title %}ללחוץ אאאארוך{% endblock %}
 
 {% block style %}
     main.card { max-width: 24rem; }
@@ -38,8 +38,8 @@
       50%      { filter: brightness(1.12); }
     }
     #success { display: none; }
-    #success h1 { color: var(--green); font-size: 2.2rem; }
-    #success .icon { animation: pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1); }
+    #success h1 { color: var(--green); font-size: 2.4rem;
+                  animation: pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1); }
     @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
     #failed { display: none; }
     #confetti-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh;
@@ -61,19 +61,14 @@
       </button>
     </div>
   </form>
-  <p class="muted">להחזיק לחוץ 2 שניות</p>
 </div>
 
 <div id="success" class="stage">
-  <span class="icon">🚗💨</span>
   <h1>תודווווות</h1>
-  <p class="muted">אפשר להיכנס!</p>
 </div>
 
 <div id="failed" class="stage">
-  <span class="icon">😕</span>
   <h1>משהו השתבש</h1>
-  <p class="muted">השער לא נפתח. דברו עם מי ששלח לכם את הלינק.</p>
 </div>
 {% endblock %}
 

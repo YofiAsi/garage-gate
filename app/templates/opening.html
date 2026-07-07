@@ -1,18 +1,16 @@
 {% extends "base.html" %}
-{% block title %}השער נפתח{% endblock %}
+{% block title %}תודווווות{% endblock %}
 
 {% block style %}
-    h1 { color: var(--green); font-size: 1.8rem; }
-    .icon { animation: pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1); }
+    h1 { color: var(--green); font-size: 2.4rem;
+         animation: pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1); }
     @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
     #confetti-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh;
                        pointer-events: none; z-index: 10; }
 {% endblock %}
 
 {% block content %}
-<span class="icon">🚗💨</span>
 <h1>תודווווות</h1>
-<p class="muted">אפשר להיכנס!</p>
 {% endblock %}
 
 {% block scripts %}
