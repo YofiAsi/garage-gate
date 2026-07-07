@@ -1,0 +1,12 @@
+services:
+  garage-gate:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - gate-data:/data
+    ports:
+      - "8000:8000"
+
+volumes:
+  gate-data:

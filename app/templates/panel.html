@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Gate admin{% endblock %}
+{% block content %}
+<h1>Gate admin</h1>
+
+<form method="post" action="/links">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Valid for
+    <input type="number" name="amount" min="1" value="1" required>
+  </label>
+  <select name="unit">
+    <option value="minutes">minutes</option>
+    <option value="hours" selected>hours</option>
+  </select>
+  <label>Label <input type="text" name="label" placeholder="e.g. plumber"></label>
+  <button class="open" type="submit">Create link</button>
+</form>
+
+{% if new_link_url %}
+<p><strong>New link:</strong> <code>{{ new_link_url }}</code></p>
+{% endif %}
+
+{% if links %}
+<table>
+  <tr><th>Label</th><th>Created</th><th>Expires</th><th>Link</th><th></th></tr>
+  {% for link in links %}
+  <tr>
+    <td>{{ link.label or "—" }}</td>
+    <td>{{ link.created_at }}</td>
+    <td>{{ link.expires_at }}</td>
+    <td><code>https://{{ public_host }}/{{ link.token }}</code></td>
+    <td>
+      <form method="post" action="/links/{{ link.id }}/revoke">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit">Revoke</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="muted">No active links.</p>
+{% endif %}
+{% endblock %}

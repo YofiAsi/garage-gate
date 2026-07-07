@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Open gate{% endblock %}
+{% block content %}
+<h1>Ready to open the gate?</h1>
+<p class="muted">This link works once.</p>
+<form method="post" action="/{{ token }}/open">
+  <button class="open" type="submit">Open gate</button>
+</form>
+{% endblock %}

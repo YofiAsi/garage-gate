@@ -1,0 +1,79 @@
+import os
+
+from flask import Flask, g
+
+from app import db
+
+
+def _config_from_env():
+    return {
+        "SECRET_KEY": os.environ.get("SECRET_KEY"),
+        "DB_PATH": os.environ.get("DB_PATH", "/data/links.db"),
+        "PUBLIC_HOST": os.environ.get("PUBLIC_HOST"),
+        "ADMIN_HOST": os.environ.get("ADMIN_HOST"),
+        "ALLOWED_EMAILS": [
+            e.strip().lower()
+            for e in os.environ.get("ALLOWED_EMAILS", "").split(",")
+            if e.strip()
+        ],
+        "GOOGLE_CLIENT_ID": os.environ.get("GOOGLE_CLIENT_ID"),
+        "GOOGLE_CLIENT_SECRET": os.environ.get("GOOGLE_CLIENT_SECRET"),
+        "HA_URL": os.environ.get("HA_URL"),
+        "HA_TOKEN": os.environ.get("HA_TOKEN"),
+        "HA_SCRIPT_ENTITY": os.environ.get("HA_SCRIPT_ENTITY"),
+    }
+
+
+def get_conn():
+    if "db_conn" not in g:
+        from flask import current_app
+
+        g.db_conn = db.connect(current_app.config["DB_PATH"])
+    return g.db_conn
+
+
+def create_app(config_overrides=None):
+    app = Flask(__name__)
+    app.config.update(_config_from_env())
+    if config_overrides:
+        app.config.update(config_overrides)
+
+    app.config.setdefault("SESSION_COOKIE_SECURE", not app.config.get("TESTING"))
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
+    conn = db.connect(app.config["DB_PATH"])
+    db.init_schema(conn)
+    conn.close()
+
+    if "GATE_OPENER" not in app.config:
+        from app.ha import make_gate_opener
+
+        app.config["GATE_OPENER"] = make_gate_opener(app.config)
+
+    @app.before_request
+    def enforce_host():
+        from flask import abort, render_template, request
+
+        host = request.host.split(":")[0]
+        expected = {
+            "public": app.config["PUBLIC_HOST"],
+            "admin": app.config["ADMIN_HOST"],
+        }.get(request.blueprint)
+        if expected is None or host != expected:
+            return render_template("invalid.html"), 404
+
+    @app.teardown_appcontext
+    def close_db(exc):
+        conn = g.pop("db_conn", None)
+        if conn is not None:
+            conn.close()
+
+    from app import admin
+    from app.public import bp as public_bp
+
+    admin.init_app(app)
+    app.register_blueprint(admin.bp)
+    app.register_blueprint(public_bp)
+
+    return app
