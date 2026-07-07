@@ -13,7 +13,7 @@ def test_valid_token_shows_confirm_button_without_consuming(client, app, gate):
     link = make_link(app)
     resp = get_page(client, link["token"])
     assert resp.status_code == 200
-    assert b"Open gate" in resp.data
+    assert "ללחוץ אאאארוך".encode() in resp.data
     assert gate.calls == 0
     # still valid after GET
     assert get_page(client, link["token"]).status_code == 200
@@ -23,7 +23,7 @@ def test_post_opens_gate_once(client, app, gate):
     link = make_link(app)
     resp = post_open(client, link["token"])
     assert resp.status_code == 200
-    assert b"opening" in resp.data.lower()
+    assert "תודווווות".encode() in resp.data
     assert gate.calls == 1
 
 
@@ -32,7 +32,7 @@ def test_second_post_is_invalid_and_does_not_open(client, app, gate):
     post_open(client, link["token"])
     resp = post_open(client, link["token"])
     assert gate.calls == 1
-    assert b"invalid" in resp.data.lower()
+    assert "הלינק לא טוב".encode() in resp.data
 
 
 def test_invalid_reasons_are_indistinguishable(client, app, gate):
@@ -57,7 +57,7 @@ def test_invalid_reasons_are_indistinguishable(client, app, gate):
 def test_post_on_invalid_token_does_not_open(client, gate):
     resp = post_open(client, "nonexistent-token")
     assert gate.calls == 0
-    assert b"invalid" in resp.data.lower()
+    assert "הלינק לא טוב".encode() in resp.data
 
 
 def test_ha_failure_shows_error_not_confirmation(client, app, gate):
@@ -65,5 +65,5 @@ def test_ha_failure_shows_error_not_confirmation(client, app, gate):
     gate.fail = True
     resp = post_open(client, link["token"])
     assert resp.status_code == 500
-    assert b"opening" not in resp.data.lower()
-    assert b"wrong" in resp.data.lower()
+    assert "תודווווות".encode() not in resp.data
+    assert "השתבש".encode() in resp.data

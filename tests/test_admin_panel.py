@@ -29,7 +29,7 @@ def test_create_link_shows_public_url_and_appears_in_list(client):
     token = match.group(1).decode()
     assert b"plumber" in resp.data
     # the link actually works on the public side
-    assert b"Open gate" in client.get(f"/{token}", base_url=PUBLIC).data
+    assert "ללחוץ אאאארוך".encode() in client.get(f"/{token}", base_url=PUBLIC).data
 
 
 def test_create_requires_auth(client):
@@ -64,14 +64,14 @@ def test_revoke_removes_from_list_and_kills_public_link(client, app):
     )
     assert resp.status_code == 200
     assert link["token"].encode() not in resp.data
-    assert b"invalid" in client.get(f"/{link['token']}", base_url=PUBLIC).data.lower()
+    assert "הלינק לא טוב".encode() in client.get(f"/{link['token']}", base_url=PUBLIC).data
 
 
 def test_revoke_requires_auth(client, app):
     link = make_link(app)
     resp = client.post(f"/admin/links/{link['id']}/revoke", data={}, base_url=ADMIN)
     assert resp.status_code == 302
-    assert b"Open gate" in client.get(f"/{link['token']}", base_url=PUBLIC).data
+    assert "ללחוץ אאאארוך".encode() in client.get(f"/{link['token']}", base_url=PUBLIC).data
 
 
 def test_minutes_unit_creates_short_expiry(client, app):

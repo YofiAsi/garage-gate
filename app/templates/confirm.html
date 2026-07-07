@@ -1,59 +1,79 @@
 {% extends "base.html" %}
-{% block title %}Open gate{% endblock %}
+{% block title %}לפתוח את השער{% endblock %}
 
 {% block style %}
     main.card { max-width: 24rem; }
-    .stage { display: grid; gap: 1.4rem; justify-items: center; }
+    .stage { display: grid; gap: 1.5rem; justify-items: center; }
+    h1 { font-size: 1.7rem; }
+
+    .ring {
+      --p: 0;
+      border-radius: 50%;
+      padding: 12px;
+      background: conic-gradient(#fecaca calc(var(--p) * 360deg), rgba(255, 255, 255, 0.07) 0);
+      transition: background 0.05s linear;
+    }
     .big-red {
       -webkit-appearance: none; appearance: none;
-      width: 13rem; height: 13rem; border-radius: 50%;
+      display: grid; place-items: center;
+      width: 12.5rem; height: 12.5rem; border-radius: 50%;
       border: 0; cursor: pointer;
-      color: #fff; font: inherit; font-size: 1.5rem; font-weight: 800;
-      letter-spacing: 0.01em; text-transform: uppercase; line-height: 1.25;
+      color: #fff;
       background: radial-gradient(circle at 50% 32%, #ff6b5e 0%, #ef4444 45%, #b91c1c 100%);
       box-shadow:
         0 14px 34px rgba(239, 68, 68, 0.45),
         inset 0 -10px 18px rgba(0, 0, 0, 0.35),
-        inset 0 8px 14px rgba(255, 255, 255, 0.28),
-        0 0 0 12px rgba(239, 68, 68, 0.12);
-      transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.2s;
+        inset 0 8px 14px rgba(255, 255, 255, 0.28);
+      transition: transform 0.12s ease, filter 0.2s;
+      touch-action: none;
+      -webkit-user-select: none; user-select: none;
+      -webkit-tap-highlight-color: transparent;
       animation: breathe 2.6s ease-in-out infinite;
     }
-    .big-red:active { transform: scale(0.94); }
+    .big-red.holding { transform: scale(0.94); animation: none; }
     .big-red:disabled { filter: saturate(0.4) brightness(0.75); cursor: default; animation: none; }
+    .big-red svg { width: 5.5rem; height: 5.5rem; pointer-events: none; }
     @keyframes breathe {
-      0%, 100% { box-shadow: 0 14px 34px rgba(239,68,68,.45), inset 0 -10px 18px rgba(0,0,0,.35),
-                 inset 0 8px 14px rgba(255,255,255,.28), 0 0 0 10px rgba(239,68,68,.10); }
-      50%      { box-shadow: 0 14px 40px rgba(239,68,68,.60), inset 0 -10px 18px rgba(0,0,0,.35),
-                 inset 0 8px 14px rgba(255,255,255,.28), 0 0 0 18px rgba(239,68,68,.16); }
+      0%, 100% { filter: brightness(1); }
+      50%      { filter: brightness(1.12); }
     }
     #success { display: none; }
-    #success h1 { color: var(--green); font-size: 1.8rem; }
+    #success h1 { color: var(--green); font-size: 2.2rem; }
     #success .icon { animation: pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1); }
     @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+    #failed { display: none; }
     #confetti-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh;
                        pointer-events: none; z-index: 10; }
 {% endblock %}
 
 {% block content %}
 <div id="ready" class="stage">
-  <h1>Welcome 👋</h1>
+  <h1>ללחוץ אאאארוך</h1>
   <form id="open-form" method="post" action="/{{ token }}/open">
-    <button id="open-btn" class="big-red" type="submit">Open<br>gate</button>
+    <div class="ring" id="ring">
+      <button id="open-btn" class="big-red" type="submit" aria-label="לפתוח את השער">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/>
+          <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>
+          <circle cx="12" cy="15.5" r="1.3" fill="#fff" stroke="none"/>
+        </svg>
+      </button>
+    </div>
   </form>
-  <p class="muted">Press once, drive in.<br>This link stops working after use.</p>
+  <p class="muted">להחזיק לחוץ 2 שניות</p>
 </div>
 
 <div id="success" class="stage">
   <span class="icon">🚗💨</span>
-  <h1>Gate opening!</h1>
-  <p class="muted">Come on in. This link has now been used.</p>
+  <h1>תודווווות</h1>
+  <p class="muted">אפשר להיכנס. הלינק נוצל.</p>
 </div>
 
-<div id="failed" class="stage" style="display:none">
+<div id="failed" class="stage">
   <span class="icon">😕</span>
-  <h1>Something went wrong</h1>
-  <p class="muted">The gate could not be opened. Contact the person who sent you this link.</p>
+  <h1>משהו השתבש</h1>
+  <p class="muted">השער לא נפתח. דברו עם מי ששלח לכם את הלינק.</p>
 </div>
 {% endblock %}
 
@@ -61,18 +81,69 @@
 <canvas id="confetti-canvas"></canvas>
 <script>
 (function () {
+  var HOLD_MS = 2000;
   var form = document.getElementById("open-form");
   var btn = document.getElementById("open-btn");
+  var ring = document.getElementById("ring");
+  var holding = false, opened = false, startAt = 0, raf = 0, pulseTimer = 0;
 
   function buzz(pattern) {
     if (navigator.vibrate) navigator.vibrate(pattern); // Android only; iOS has no vibration API
   }
 
-  form.addEventListener("submit", async function (e) {
+  // JS drives the long-press; a plain (no-JS) form submit still works as fallback
+  form.addEventListener("submit", function (e) { e.preventDefault(); });
+  btn.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+
+  btn.addEventListener("pointerdown", function (e) {
+    if (opened || btn.disabled) return;
     e.preventDefault();
-    buzz(60);
+    try { btn.setPointerCapture(e.pointerId); } catch (err) {}
+    holding = true;
+    startAt = performance.now();
+    btn.classList.add("holding");
+    pulse(380); // vibration pulses, pace increases as the hold progresses
+    raf = requestAnimationFrame(tick);
+  });
+
+  ["pointerup", "pointercancel"].forEach(function (ev) {
+    btn.addEventListener(ev, cancelHold);
+  });
+
+  function cancelHold() {
+    if (!holding) return;
+    holding = false;
+    btn.classList.remove("holding");
+    clearTimeout(pulseTimer);
+    cancelAnimationFrame(raf);
+    ring.style.setProperty("--p", 0);
+  }
+
+  function pulse(delay) {
+    pulseTimer = setTimeout(function () {
+      if (!holding) return;
+      buzz(30);
+      pulse(Math.max(70, delay * 0.76));
+    }, delay);
+  }
+
+  function tick(t) {
+    if (!holding) return;
+    var p = Math.min(1, (t - startAt) / HOLD_MS);
+    ring.style.setProperty("--p", p);
+    if (p >= 1) {
+      holding = false;
+      clearTimeout(pulseTimer);
+      openGate();
+      return;
+    }
+    raf = requestAnimationFrame(tick);
+  }
+
+  async function openGate() {
+    opened = true;
     btn.disabled = true;
-    btn.innerHTML = "Opening&hellip;";
+    btn.classList.remove("holding");
     var ok = false, invalid = false;
     try {
       var resp = await fetch(form.action, { method: "POST" });
@@ -82,7 +153,7 @@
     if (ok) {
       document.getElementById("ready").style.display = "none";
       document.getElementById("success").style.display = "grid";
-      buzz([120, 60, 120, 60, 250]);
+      buzz([120, 60, 120, 60, 300]);
       confetti();
     } else if (invalid) {
       window.location.reload(); // server renders the generic invalid page
@@ -90,7 +161,7 @@
       document.getElementById("ready").style.display = "none";
       document.getElementById("failed").style.display = "grid";
     }
-  });
+  }
 
   function confetti() {
     var canvas = document.getElementById("confetti-canvas");
