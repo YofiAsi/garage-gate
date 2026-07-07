@@ -3,19 +3,22 @@ services:
     build: .
     restart: unless-stopped
     env_file: .env
-    # Home Assistant's own compose file uses network_mode: host (needed for
-    # HA's LAN discovery), and is only reachable on the Tailscale interface,
-    # not the LAN IP (confirmed: LAN connections refused, Tailscale
-    # connections succeed). Matching network_mode: host here lets this app
-    # reach HA via plain "localhost" — no Tailscale client, no hardcoded
-    # Tailscale IP to keep in sync. Requires Dokploy to route to this
-    # service by host port (e.g. 127.0.0.1:8000) rather than by container
-    # DNS name/bridge network, since host networking has no bridge network
-    # of its own. No `ports`/`expose` needed either — meaningless under
-    # host networking, since there's no port translation to do.
-    network_mode: host
     volumes:
       - gate-data:/data
+    expose:
+      - "8000"
+    extra_hosts:
+      # "yofiserver" is a Tailscale MagicDNS name, not resolvable from
+      # inside a plain container. Home Assistant is bound to the Tailscale
+      # interface only (confirmed: unreachable on the LAN IP, reachable on
+      # the Tailscale IP), so this must be the Tailscale IP, not the LAN
+      # IP. Since Dokploy runs on the same HomeLab box as Home Assistant,
+      # the container reaches it through the host's own tailscale0 route —
+      # no Tailscale client needed inside the container. If Dokploy ever
+      # moves to a different machine, this will need a Tailscale
+      # sidecar/client on that host instead. Update this IP if it changes
+      # (check with `tailscale status` on the HomeLab server).
+      - "yofiserver:100.69.227.53"
 
 volumes:
   gate-data:

@@ -1,15 +1,4 @@
 services:
   garage-gate:
-    # Production uses network_mode: host (see docker-compose.yml) because it
-    # runs on the same physical box as Home Assistant. This dev machine
-    # doesn't, and Docker Desktop's host networking on Windows/Mac doesn't
-    # behave like native Linux anyway, so local dev stays on ordinary bridge
-    # networking with a published port and the Tailscale-IP mapping instead.
-    network_mode: bridge
     ports:
       - "18000:8000"
-    extra_hosts:
-      # "yofiserver" is Tailscale MagicDNS; map it directly to HA's
-      # Tailscale IP so local dev can still reach the real HA webhook.
-      # Update if it changes (check with `tailscale status`).
-      - "yofiserver:100.69.227.53"
