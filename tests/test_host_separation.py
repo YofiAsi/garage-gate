@@ -6,6 +6,15 @@ from tests.conftest import BASE, make_link
 from tests.test_admin_auth import login
 
 
+def test_admin_without_trailing_slash_does_not_redirect(client):
+    # a 308 here would carry an absolute URL built from the (possibly
+    # misdetected) request scheme; avoid the whole class of bug by serving
+    # /admin directly instead of redirecting to /admin/
+    login(client)
+    resp = client.get("/admin", base_url=BASE)
+    assert resp.status_code == 200
+
+
 def test_admin_prefix_is_not_treated_as_a_token(client, gate):
     # /admin (no session) must reach the admin area, not the token route
     resp = client.get("/admin/", base_url=BASE)

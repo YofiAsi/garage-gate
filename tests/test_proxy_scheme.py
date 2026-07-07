@@ -27,6 +27,30 @@ def test_redirect_uri_is_http_without_proxy(client, monkeypatch):
     assert uri == "http://garage.test/admin/auth/callback"
 
 
+def test_redirect_uri_is_https_via_cloudflare_visitor_header(client, monkeypatch):
+    # Cloudflare (including Cloudflare Tunnel) sets CF-Visitor reliably even
+    # when an intermediate proxy (e.g. Traefik) loses or overwrites
+    # X-Forwarded-Proto, so it must win over a misleading X-Forwarded-Proto.
+    uri = _capture_login_redirect(
+        client,
+        monkeypatch,
+        {"X-Forwarded-Proto": "http", "CF-Visitor": '{"scheme":"https"}'},
+    )
+    assert uri == "https://garage.test/admin/auth/callback"
+
+
+def test_cf_visitor_with_http_scheme_does_not_force_https(client, monkeypatch):
+    uri = _capture_login_redirect(client, monkeypatch, {"CF-Visitor": '{"scheme":"http"}'})
+    assert uri == "http://garage.test/admin/auth/callback"
+
+
+def test_malformed_cf_visitor_header_is_ignored(client, monkeypatch):
+    uri = _capture_login_redirect(
+        client, monkeypatch, {"X-Forwarded-Proto": "https", "CF-Visitor": "not-json"}
+    )
+    assert uri == "https://garage.test/admin/auth/callback"
+
+
 def test_insecure_http_flag_relaxes_session_cookie(tmp_path):
     from app import create_app
 

@@ -91,7 +91,7 @@ def _render_panel(new_link_url=None, links_open=False):
     )
 
 
-@bp.get("/")
+@bp.get("/", strict_slashes=False)
 @login_required
 def panel():
     return _render_panel()

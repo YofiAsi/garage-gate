@@ -1,8 +1,32 @@
+import json
 import os
 
 from flask import Flask, g
 
 from app import db
+
+
+def _cloudflare_scheme_fix(wsgi_app):
+    """Trust Cloudflare's own CF-Visitor header for the original scheme.
+
+    Cloudflare (including Cloudflare Tunnel) sets this reliably at its edge.
+    An intermediate reverse proxy (e.g. Traefik behind cloudflared) can lose
+    or overwrite X-Forwarded-Proto, so this is checked *after* ProxyFix and
+    wins when present.
+    """
+
+    def middleware(environ, start_response):
+        visitor = environ.get("HTTP_CF_VISITOR")
+        if visitor:
+            try:
+                scheme = json.loads(visitor).get("scheme")
+            except (ValueError, AttributeError):
+                scheme = None
+            if scheme in ("http", "https"):
+                environ["wsgi.url_scheme"] = scheme
+        return wsgi_app(environ, start_response)
+
+    return middleware
 
 
 def _config_from_env():
@@ -46,7 +70,7 @@ def create_app(config_overrides=None):
     # so url_for(_external=True) builds https URLs behind SSL termination.
     from werkzeug.middleware.proxy_fix import ProxyFix
 
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+    app.wsgi_app = ProxyFix(_cloudflare_scheme_fix(app.wsgi_app), x_proto=1, x_host=1)
 
     conn = db.connect(app.config["DB_PATH"])
     db.init_schema(conn)
