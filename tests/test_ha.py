@@ -1,4 +1,3 @@
-import json
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -12,18 +11,10 @@ class RecordingHandler(BaseHTTPRequestHandler):
     status = 200
 
     def do_POST(self):
-        body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
-        RecordingHandler.requests.append(
-            {
-                "path": self.path,
-                "auth": self.headers.get("Authorization"),
-                "body": json.loads(body) if body else None,
-            }
-        )
+        self.rfile.read(int(self.headers.get("Content-Length", 0)))
+        RecordingHandler.requests.append({"path": self.path})
         self.send_response(RecordingHandler.status)
-        self.send_header("Content-Type", "application/json")
         self.end_headers()
-        self.wfile.write(b"[]")
 
     def log_message(self, *args):
         pass
@@ -40,24 +31,14 @@ def ha_server():
     server.shutdown()
 
 
-def make_opener(url):
-    return make_gate_opener(
-        {
-            "HA_URL": url,
-            "HA_TOKEN": "secret-ha-token",
-            "HA_SCRIPT_ENTITY": "script.open_gate",
-        }
-    )
+def make_opener(base_url):
+    return make_gate_opener({"HA_WEBHOOK_URL": f"{base_url}/api/webhook/secret-hook-id"})
 
 
-def test_calls_ha_script_turn_on_with_bearer_token(ha_server):
+def test_posts_to_webhook(ha_server):
     url, handler = ha_server
     make_opener(url)()
-    assert len(handler.requests) == 1
-    req = handler.requests[0]
-    assert req["path"] == "/api/services/script/turn_on"
-    assert req["auth"] == "Bearer secret-ha-token"
-    assert req["body"] == {"entity_id": "script.open_gate"}
+    assert handler.requests == [{"path": "/api/webhook/secret-hook-id"}]
 
 
 def test_raises_on_ha_error_status(ha_server):

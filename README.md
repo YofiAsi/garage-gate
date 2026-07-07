@@ -6,9 +6,9 @@ Self-hosted temporary-link service for opening a gate through Home Assistant.
   Tapping it consumes the single-use link and triggers the HA script that opens
   the gate. Expired / used / revoked / unknown tokens all show the same generic
   "link invalid" page.
-- **Admin:** `https://admin.asafshilo.com/` — Google login (allowlisted emails
-  only) with a form to create links (expiry in minutes/hours, optional label)
-  and a list of active links with revoke buttons.
+- **Admin:** `https://garage.asafshilo.com/admin/` — Google login (allowlisted
+  emails only) with a form to create links (expiry in minutes/hours, optional
+  label) and a list of active links with revoke buttons.
 
 Links expire on **first use or the time limit, whichever comes first**.
 Visiting a link (GET) does *not* consume it — only tapping the button does —
@@ -20,14 +20,15 @@ so WhatsApp/Telegram link previews can't burn a token.
 
 1. In [Google Cloud Console → APIs & Credentials](https://console.cloud.google.com/apis/credentials),
    create an **OAuth client ID** of type **Web application**.
-2. Add the authorized redirect URI: `https://admin.asafshilo.com/auth/callback`
+2. Add the authorized redirect URI: `https://garage.asafshilo.com/admin/auth/callback`
 3. Put the client ID and secret in `.env`.
 
 ### 2. Home Assistant
 
-Create a long-lived access token (HA → your profile → Security) and put it in
-`.env` as `HA_TOKEN`, together with `HA_URL` (reachable from the container) and
-the script entity id (`HA_SCRIPT_ENTITY`).
+Create a webhook-triggered automation in HA that runs the gate-open script,
+and put its URL in `.env` as `HA_WEBHOOK_URL`
+(e.g. `http://yofiserver:8123/api/webhook/<webhook-id>`). The webhook id is
+the secret — it is only ever used server-side.
 
 ### 3. Environment
 
@@ -38,15 +39,9 @@ cp .env.example .env   # then fill in the blanks
 ### 4. Deploy with Dokploy
 
 Create a Compose (or Dockerfile) application pointing at this repo, set the
-env vars from `.env` in Dokploy's environment settings, and attach **both**
-domains to the service on port 8000:
-
-- `garage.asafshilo.com`
-- `admin.asafshilo.com`
-
-Dokploy/Traefik terminates SSL for both; the app decides which routes each
-hostname may reach (`PUBLIC_HOST` / `ADMIN_HOST`). Requests for the wrong
-host get a 404.
+env vars from `.env` in Dokploy's environment settings, and attach the domain
+`garage.asafshilo.com` to the service on port 8000. Dokploy/Traefik terminates
+SSL; public links live at `/<token>` and the admin panel at `/admin/`.
 
 The SQLite database lives on the `gate-data` volume (`/data/links.db`), so
 links survive redeploys.

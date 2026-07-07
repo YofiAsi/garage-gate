@@ -1,12 +1,12 @@
-"""The HA long-lived token must never appear in anything a visitor can see."""
+"""The HA webhook URL (its id is the secret) must never appear in anything a visitor sees."""
 
 from app import create_app, db
 from tests.test_ha import ha_server  # noqa: F401  (fixture)
 
-SECRET = "super-secret-ha-token"
+SECRET_HOOK = "secret-hook-id"
 
 
-def test_ha_token_never_in_public_responses(tmp_path, ha_server):  # noqa: F811
+def test_webhook_id_never_in_public_responses(tmp_path, ha_server):  # noqa: F811
     url, handler = ha_server
     app = create_app(
         {
@@ -14,11 +14,8 @@ def test_ha_token_never_in_public_responses(tmp_path, ha_server):  # noqa: F811
             "SECRET_KEY": "test-secret",
             "DB_PATH": str(tmp_path / "links.db"),
             "PUBLIC_HOST": "garage.test",
-            "ADMIN_HOST": "admin.test",
             "ALLOWED_EMAILS": ["owner@example.com"],
-            "HA_URL": url,
-            "HA_TOKEN": SECRET,
-            "HA_SCRIPT_ENTITY": "script.open_gate",
+            "HA_WEBHOOK_URL": f"{url}/api/webhook/{SECRET_HOOK}",
         }
     )
     client = app.test_client()
@@ -35,6 +32,6 @@ def test_ha_token_never_in_public_responses(tmp_path, ha_server):  # noqa: F811
     assert len(handler.requests) == 1
 
     for resp in responses:
-        assert SECRET.encode() not in resp.data
+        assert SECRET_HOOK.encode() not in resp.data
         for name, value in resp.headers:
-            assert SECRET not in name and SECRET not in value
+            assert SECRET_HOOK not in name and SECRET_HOOK not in value

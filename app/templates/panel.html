@@ -3,7 +3,7 @@
 {% block content %}
 <h1>Gate admin</h1>
 
-<form method="post" action="/links">
+<form method="post" action="{{ url_for('admin.create_link') }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <label>Valid for
     <input type="number" name="amount" min="1" value="1" required>
@@ -30,7 +30,7 @@
     <td>{{ link.expires_at }}</td>
     <td><code>https://{{ public_host }}/{{ link.token }}</code></td>
     <td>
-      <form method="post" action="/links/{{ link.id }}/revoke">
+      <form method="post" action="{{ url_for('admin.revoke_link', link_id=link.id) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button type="submit">Revoke</button>
       </form>

@@ -10,7 +10,6 @@ def _config_from_env():
         "SECRET_KEY": os.environ.get("SECRET_KEY"),
         "DB_PATH": os.environ.get("DB_PATH", "/data/links.db"),
         "PUBLIC_HOST": os.environ.get("PUBLIC_HOST"),
-        "ADMIN_HOST": os.environ.get("ADMIN_HOST"),
         "ALLOWED_EMAILS": [
             e.strip().lower()
             for e in os.environ.get("ALLOWED_EMAILS", "").split(",")
@@ -18,9 +17,7 @@ def _config_from_env():
         ],
         "GOOGLE_CLIENT_ID": os.environ.get("GOOGLE_CLIENT_ID"),
         "GOOGLE_CLIENT_SECRET": os.environ.get("GOOGLE_CLIENT_SECRET"),
-        "HA_URL": os.environ.get("HA_URL"),
-        "HA_TOKEN": os.environ.get("HA_TOKEN"),
-        "HA_SCRIPT_ENTITY": os.environ.get("HA_SCRIPT_ENTITY"),
+        "HA_WEBHOOK_URL": os.environ.get("HA_WEBHOOK_URL"),
     }
 
 
@@ -51,18 +48,6 @@ def create_app(config_overrides=None):
 
         app.config["GATE_OPENER"] = make_gate_opener(app.config)
 
-    @app.before_request
-    def enforce_host():
-        from flask import abort, render_template, request
-
-        host = request.host.split(":")[0]
-        expected = {
-            "public": app.config["PUBLIC_HOST"],
-            "admin": app.config["ADMIN_HOST"],
-        }.get(request.blueprint)
-        if expected is None or host != expected:
-            return render_template("invalid.html"), 404
-
     @app.teardown_appcontext
     def close_db(exc):
         conn = g.pop("db_conn", None)
@@ -73,7 +58,7 @@ def create_app(config_overrides=None):
     from app.public import bp as public_bp
 
     admin.init_app(app)
-    app.register_blueprint(admin.bp)
+    app.register_blueprint(admin.bp, url_prefix="/admin")
     app.register_blueprint(public_bp)
 
     return app

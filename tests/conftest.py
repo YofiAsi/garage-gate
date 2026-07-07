@@ -2,8 +2,10 @@ import pytest
 
 from app import create_app, db
 
-PUBLIC = "http://garage.test"
-ADMIN = "http://admin.test"
+BASE = "http://garage.test"
+# kept as aliases so tests read clearly: same host, different areas
+PUBLIC = BASE
+ADMIN = BASE
 
 
 class FakeGate:
@@ -30,7 +32,6 @@ def app(tmp_path, gate):
             "SECRET_KEY": "test-secret",
             "DB_PATH": str(tmp_path / "links.db"),
             "PUBLIC_HOST": "garage.test",
-            "ADMIN_HOST": "admin.test",
             "ALLOWED_EMAILS": ["owner@example.com"],
             "GOOGLE_CLIENT_ID": "test-client-id",
             "GOOGLE_CLIENT_SECRET": "test-client-secret",
