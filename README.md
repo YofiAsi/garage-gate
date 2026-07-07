@@ -26,19 +26,21 @@ using a link never invalidates it.
 ### 2. Home Assistant
 
 Create a webhook-triggered automation in HA that runs the gate-open script,
-and put its URL in `.env` as `HA_WEBHOOK_URL`
-(e.g. `http://yofiserver:8123/api/webhook/<webhook-id>`). The webhook id is
-the secret — it is only ever used server-side.
+and put its URL in `.env` as `HA_WEBHOOK_URL`. The webhook id is the secret
+— it is only ever used server-side.
 
-`yofiserver` is a Tailscale MagicDNS name, not a plain LAN hostname, and HA
-is bound only to the Tailscale interface (not the raw LAN IP). A container
-has no Tailscale client of its own, so `docker-compose.yml` maps that
-hostname to HA's Tailscale IP directly via `extra_hosts` — this works because
-Dokploy runs on the same host as Home Assistant, so the container reaches it
-through the host's own `tailscale0` route. If that IP ever changes, or if
-this app is ever deployed on a different machine than the HA host, update
-(or replace) that `extra_hosts` entry — check the current IP with
-`tailscale status` on the HomeLab server.
+Home Assistant's own compose file runs with `network_mode: host` and is
+reachable only on its Tailscale interface, not the plain LAN IP (confirmed:
+LAN connections are refused, Tailscale connections succeed — this looks like
+a deliberate choice, not an oversight). This app's production
+`docker-compose.yml` matches `network_mode: host` for the same reason
+Dokploy needs it here: it runs on the same physical box as Home Assistant,
+so **use `http://localhost:8123/api/webhook/<id>`** — no Tailscale
+dependency needed. For local development (a different machine),
+`docker-compose.local.yml` instead maps the `yofiserver` Tailscale hostname
+directly to its IP via `extra_hosts`, so local dev keeps using
+`http://yofiserver:8123/api/webhook/<id>` and can still reach the real
+webhook. See `.env.example` for both.
 
 ### 3. Environment
 
@@ -49,20 +51,31 @@ cp .env.example .env   # then fill in the blanks
 ### 4. Deploy with Dokploy
 
 `docker-compose.yml` is the production file — it builds the image, mounts
-the `gate-data` volume, and does **not** publish any host port. Dokploy's
-Traefik reaches the container over the internal Docker network, so nothing
-but Dokploy's own reverse proxy is ever exposed to the internet.
+the `gate-data` volume, and runs with `network_mode: host` (see above: this
+matches Home Assistant's own setup on the same box, and lets the app reach
+HA via plain `localhost` with no Tailscale dependency).
 
 1. In Dokploy, create a **Compose** application pointing at this repo/branch
    (it will use `docker-compose.yml` automatically).
 2. Set the env vars from `.env` in Dokploy's environment settings (or point
    it at an env file) — never commit `.env` itself.
-3. Add a domain: `garage.asafshilo.com` → service `garage-gate`, container
-   port `8000`. Dokploy/Traefik terminates SSL and proxies to that port.
+3. Add a domain: `garage.asafshilo.com` → the app on port `8000`. Because
+   `network_mode: host` has no bridge network of its own, Dokploy needs to
+   route to this service by host port (e.g. `127.0.0.1:8000`) rather than by
+   the usual container-name/bridge-network discovery — check Dokploy's app
+   settings for a "host network" toggle if the domain doesn't route
+   correctly at first.
 
 Public links live at `/<token>`, the admin panel at `/admin/`. The SQLite
 database lives on the `gate-data` volume (`/data/links.db`), so links
 survive redeploys.
+
+**Security note:** unlike the previous bridge-network setup, host networking
+means gunicorn's port 8000 binds directly on every host interface (LAN,
+Tailscale, loopback) — Docker's network isolation no longer hides it. The
+admin panel still requires a valid Google-authenticated session either way,
+but if you want port 8000 unreachable from the LAN the way HA's port 8123
+already is, add the same firewall rule for it that currently protects 8123.
 
 ## Development
 
