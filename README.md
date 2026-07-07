@@ -61,6 +61,14 @@ use the test suite or Docker for realistic behavior):
 .venv/Scripts/python -m flask --app wsgi run
 ```
 
+### Testing Google login locally
+
+Add `http://localhost:18000/admin/auth/callback` as an extra authorized
+redirect URI in the Google console, set `INSECURE_HTTP=1` in your local
+`.env` (never in production), and `docker compose up`. The app builds the
+redirect URI from the request scheme (behind Traefik, `X-Forwarded-Proto`
+makes it https automatically).
+
 ## Notes / limitations
 
 - If the HA call fails after a link was claimed, the link stays consumed

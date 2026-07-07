@@ -59,9 +59,8 @@ def _check_csrf():
 
 @bp.get("/login")
 def login():
-    redirect_uri = url_for("admin.auth_callback", _external=True, _scheme="https")
-    if current_app.config.get("TESTING"):
-        redirect_uri = url_for("admin.auth_callback", _external=True)
+    # scheme comes from the request (ProxyFix maps X-Forwarded-Proto behind Traefik)
+    redirect_uri = url_for("admin.auth_callback", _external=True)
     return oauth.google.authorize_redirect(redirect_uri)
 
 

@@ -18,6 +18,7 @@ def _config_from_env():
         "GOOGLE_CLIENT_ID": os.environ.get("GOOGLE_CLIENT_ID"),
         "GOOGLE_CLIENT_SECRET": os.environ.get("GOOGLE_CLIENT_SECRET"),
         "HA_WEBHOOK_URL": os.environ.get("HA_WEBHOOK_URL"),
+        "INSECURE_HTTP": os.environ.get("INSECURE_HTTP", "").lower() in ("1", "true", "yes"),
     }
 
 
@@ -35,9 +36,17 @@ def create_app(config_overrides=None):
     if config_overrides:
         app.config.update(config_overrides)
 
-    app.config.setdefault("SESSION_COOKIE_SECURE", not app.config.get("TESTING"))
+    app.config["SESSION_COOKIE_SECURE"] = not (
+        app.config.get("TESTING") or app.config.get("INSECURE_HTTP")
+    )
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
+    # Trust the reverse proxy's X-Forwarded-Proto/Host (Traefik in production)
+    # so url_for(_external=True) builds https URLs behind SSL termination.
+    from werkzeug.middleware.proxy_fix import ProxyFix
+
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
     conn = db.connect(app.config["DB_PATH"])
     db.init_schema(conn)
