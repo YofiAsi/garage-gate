@@ -8,27 +8,28 @@ services:
     expose:
       - "8000"
     extra_hosts:
-      # "yofiserver" is a Tailscale MagicDNS name, not resolvable from
-      # inside a plain container. Home Assistant is bound to the Tailscale
-      # interface (confirmed: unreachable on the LAN IP, reachable on the
-      # Tailscale IP), so this must be the Tailscale IP, not the LAN IP.
-      # Since Dokploy runs on the same HomeLab box as Home Assistant, the
-      # container reaches it through the host's own tailscale0 route — no
-      # Tailscale client needed inside the container itself; this is just a
-      # hardcoded private IP. Update this IP if it changes (check with
-      # `tailscale status` on the HomeLab server). If HA_WEBHOOK_URL is
-      # switched to use host.docker.internal instead (see below), this
-      # entry is no longer needed.
-      - "yofiserver:100.69.227.53"
-      # Experimental Tailscale-free alternative: HA (network_mode: host, no
-      # server_host restriction) should also be listening on the Docker
-      # bridge gateway, reachable here without any hardcoded IP. Try setting
-      # HA_WEBHOOK_URL to http://host.docker.internal:8123/api/webhook/<id>
-      # — if the host firewall only blocks the LAN interface specifically,
-      # this works and needs no Tailscale IP at all. If it still gets
-      # "connection refused", the firewall is blocking more broadly than
-      # just the LAN interface; fall back to the yofiserver mapping above.
+      # Home Assistant runs with network_mode: host and listens on 0.0.0.0:8123,
+      # so it accepts connections on every host address. What blocks containers
+      # is ufw: its default INPUT policy denies traffic arriving from Docker
+      # bridges, which shows up as a silent timeout rather than a refusal.
+      #
+      # The host firewall therefore carries a companion rule:
+      #   ufw allow from 10.77.0.0/24 to any port 8123 proto tcp
+      # That rule matches on SOURCE address, which is why the subnet below is
+      # pinned rather than left to Docker's auto-assignment from 172.16.0.0/12.
+      # Change one without the other and the gate silently stops opening.
       - "host.docker.internal:host-gateway"
+
+networks:
+  default:
+    ipam:
+      config:
+        # Pinned so the ufw rule above keeps matching across redeploys. Docker
+        # would otherwise hand out an arbitrary /16 from its default pool, and
+        # the bridge name (br-<netid>) changes too. Verified free of every
+        # other Docker network on this host, the LAN (192.168.1.0/24), and
+        # Tailscale (100.64.0.0/10).
+        - subnet: 10.77.0.0/24
 
 volumes:
   gate-data:

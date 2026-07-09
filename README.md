@@ -27,28 +27,44 @@ using a link never invalidates it.
 
 Create a webhook-triggered automation in HA that runs the gate-open script,
 and put its URL in `.env` as `HA_WEBHOOK_URL`
-(e.g. `http://yofiserver:8123/api/webhook/<webhook-id>`). The webhook id is
-the secret — it is only ever used server-side.
+(e.g. `http://host.docker.internal:8123/api/webhook/<webhook-id>`). The
+webhook id is the secret — it is only ever used server-side.
 
-`yofiserver` is a Tailscale MagicDNS name, not a plain LAN hostname, and HA
-was found to be unreachable on the raw LAN IP (connection refused) but
-reachable on the Tailscale IP. A container has no Tailscale client of its
-own, so `docker-compose.yml` maps that hostname to HA's Tailscale IP
-directly via `extra_hosts` — no Tailscale software runs in the container,
-this is just a hardcoded private IP, reachable because Dokploy runs on the
-same host as Home Assistant. If that IP ever changes, or if this app is
-ever deployed on a different machine than the HA host, update (or replace)
-that `extra_hosts` entry — check the current IP with `tailscale status` on
-the HomeLab server.
+This requires no Tailscale dependency. HA runs with `network_mode: host` and
+no `http: server_host` restriction, so it listens on `0.0.0.0:8123` and
+accepts connections on every host address, including the Docker bridge
+gateway that `host.docker.internal` resolves to.
 
-**To avoid the Tailscale IP entirely:** try
-`HA_WEBHOOK_URL=http://host.docker.internal:8123/api/webhook/<id>` instead.
-`docker-compose.yml` already maps `host.docker.internal` to the Docker
-bridge gateway. Since HA runs with no `server_host` restriction, it should
-also be listening there — this only fails if the host firewall blocks more
-than just the LAN interface specifically. If it works, the `yofiserver`
-mapping becomes unnecessary; if you get "connection refused" again, revert
-to the `yofiserver`/Tailscale-IP URL, which is confirmed working.
+What does block a container is **ufw**, whose default INPUT policy denies
+traffic arriving from Docker bridges. Because it drops rather than rejects,
+the symptom is a silent timeout, not "connection refused". The host needs
+one rule:
+
+```bash
+sudo ufw allow from 10.77.0.0/24 to any port 8123 proto tcp
+```
+
+That matches on **source address**, which is why `docker-compose.yml` pins
+this app's network to `10.77.0.0/24` instead of letting Docker auto-assign a
+`/16` from `172.16.0.0/12`. An auto-assigned subnet (and the `br-<netid>`
+bridge name that goes with it) can change whenever the stack is recreated,
+which would silently stop the rule from matching. **The pinned subnet and
+the ufw rule must be kept in sync**, and the rule is scoped to this app
+alone — no other container on the host can reach HA on 8123.
+
+If the gate stops opening after a redeploy, check that the rule's subnet
+still matches the compose file before looking anywhere else. To confirm the
+path end to end:
+
+```bash
+docker exec <garage-gate-container> \
+  python -c "import urllib.request; print(urllib.request.urlopen('http://host.docker.internal:8123/', timeout=5).status)"
+```
+
+A timeout means the firewall; a refusal would mean HA itself is not
+listening. Note that a container's packet to HA's Tailscale IP leaves via
+its bridge gateway and arrives on a Docker bridge, *not* on `tailscale0`, so
+allowing `tailscale0` in ufw does nothing for container traffic.
 
 ### 3. Environment
 
