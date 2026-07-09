@@ -40,6 +40,22 @@
     #success { display: none; }
     #success h1 { color: var(--text); font-size: 2.4rem;
                   animation: pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1); }
+    .retry-chip {
+      -webkit-appearance: none; appearance: none;
+      font: inherit; font-size: 0.9rem;
+      color: var(--muted); cursor: pointer;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      border-radius: 999px;
+      padding: 0.4rem 1rem;
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .retry-chip:hover, .retry-chip:focus-visible {
+      color: var(--text);
+      border-color: rgba(255, 255, 255, 0.22);
+      background: rgba(255, 255, 255, 0.08);
+    }
     @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
     #failed { display: none; }
     #confetti-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh;
@@ -65,6 +81,7 @@
 
 <div id="success" class="stage">
   <h1>תודווווות</h1>
+  <button id="retry-btn" class="retry-chip" type="button">לא נפתח?</button>
 </div>
 
 <div id="failed" class="stage">
@@ -81,6 +98,7 @@
   var btn = document.getElementById("open-btn");
   var ring = document.getElementById("ring");
   var holding = false, opened = false, startAt = 0, raf = 0, pulseTimer = 0;
+  var confettiActive = false;
 
   function buzz(pattern) {
     if (navigator.vibrate) navigator.vibrate(pattern); // Android only; iOS has no vibration API
@@ -158,6 +176,17 @@
     }
   }
 
+  // "לא נפתח?" — reset in place so the user can long-press again (token stays valid)
+  document.getElementById("retry-btn").addEventListener("click", function () {
+    confettiActive = false;
+    opened = false;
+    btn.disabled = false;
+    btn.classList.remove("holding");
+    ring.style.setProperty("--p", 0);
+    document.getElementById("success").style.display = "none";
+    document.getElementById("ready").style.display = "grid";
+  });
+
   function confetti() {
     var canvas = document.getElementById("confetti-canvas");
     var ctx = canvas.getContext("2d");
@@ -187,7 +216,9 @@
       });
     }
     var start = performance.now();
+    confettiActive = true;
     (function frame(t) {
+      if (!confettiActive) { ctx.clearRect(0, 0, innerWidth, innerHeight); return; }
       ctx.clearRect(0, 0, innerWidth, innerHeight);
       var alive = false;
       for (var p of pieces) {
@@ -205,7 +236,7 @@
         ctx.restore();
       }
       if (alive) requestAnimationFrame(frame);
-      else ctx.clearRect(0, 0, innerWidth, innerHeight);
+      else { confettiActive = false; ctx.clearRect(0, 0, innerWidth, innerHeight); }
     })(start);
   }
 })();
