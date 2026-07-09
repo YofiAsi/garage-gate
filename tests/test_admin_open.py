@@ -32,3 +32,10 @@ def test_open_returns_500_when_gate_fails(client, gate):
     resp = client.post("/admin/open", data={"csrf_token": csrf}, base_url=ADMIN)
     assert resp.status_code == 500
     assert gate.calls == 1
+
+
+def test_panel_renders_open_button(client):
+    login(client)
+    resp = client.get("/admin/", base_url=ADMIN)
+    assert resp.status_code == 200
+    assert b'id="admin-open-btn"' in resp.data
