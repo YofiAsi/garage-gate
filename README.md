@@ -31,14 +31,24 @@ and put its URL in `.env` as `HA_WEBHOOK_URL`
 the secret — it is only ever used server-side.
 
 `yofiserver` is a Tailscale MagicDNS name, not a plain LAN hostname, and HA
-is bound only to the Tailscale interface (not the raw LAN IP). A container
-has no Tailscale client of its own, so `docker-compose.yml` maps that
-hostname to HA's Tailscale IP directly via `extra_hosts` — this works because
-Dokploy runs on the same host as Home Assistant, so the container reaches it
-through the host's own `tailscale0` route. If that IP ever changes, or if
-this app is ever deployed on a different machine than the HA host, update
-(or replace) that `extra_hosts` entry — check the current IP with
-`tailscale status` on the HomeLab server.
+was found to be unreachable on the raw LAN IP (connection refused) but
+reachable on the Tailscale IP. A container has no Tailscale client of its
+own, so `docker-compose.yml` maps that hostname to HA's Tailscale IP
+directly via `extra_hosts` — no Tailscale software runs in the container,
+this is just a hardcoded private IP, reachable because Dokploy runs on the
+same host as Home Assistant. If that IP ever changes, or if this app is
+ever deployed on a different machine than the HA host, update (or replace)
+that `extra_hosts` entry — check the current IP with `tailscale status` on
+the HomeLab server.
+
+**To avoid the Tailscale IP entirely:** try
+`HA_WEBHOOK_URL=http://host.docker.internal:8123/api/webhook/<id>` instead.
+`docker-compose.yml` already maps `host.docker.internal` to the Docker
+bridge gateway. Since HA runs with no `server_host` restriction, it should
+also be listening there — this only fails if the host firewall blocks more
+than just the LAN interface specifically. If it works, the `yofiserver`
+mapping becomes unnecessary; if you get "connection refused" again, revert
+to the `yofiserver`/Tailscale-IP URL, which is confirmed working.
 
 ### 3. Environment
 
