@@ -65,6 +65,18 @@ def test_post_on_invalid_token_does_not_open(client, gate):
     assert "הלינק לא טוב".encode() in resp.data
 
 
+def test_post_on_expired_token_shows_invalid_page(client, app, gate):
+    # A link that was valid when the page loaded but has since expired must land
+    # the visitor on the invalid page (404) — never the "משהו השתבש" error state —
+    # and must not call the gate. The client reloads on this 404 to render it.
+    link = make_link(app, minutes=-5)  # already expired
+    resp = post_open(client, link["token"])
+    assert resp.status_code == 404
+    assert gate.calls == 0
+    assert "הלינק לא טוב".encode() in resp.data
+    assert "השתבש".encode() not in resp.data
+
+
 def test_ha_failure_shows_error_not_confirmation(client, app, gate):
     link = make_link(app)
     gate.fail = True

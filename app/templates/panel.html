@@ -97,10 +97,48 @@
     }
     .revoke-btn:active { background: #94a3b822; }
     .empty { color: var(--muted); font-size: 0.85rem; padding: 0.5rem 0; }
+
+    .open-now { display: grid; }
+    .open-btn {
+      position: relative;
+      display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+      width: 100%; font: inherit; font-weight: 650; font-size: 1.05rem; cursor: pointer;
+      color: #fff; border: 0; border-radius: 12px; padding: 1rem;
+      background: radial-gradient(circle at 50% 30%, #ff6b5e 0%, #ef4444 55%, #b91c1c 100%);
+      box-shadow: 0 6px 16px rgba(239, 68, 68, 0.28);
+      transition: transform 0.1s, filter 0.15s;
+    }
+    .open-btn:active { transform: scale(0.98); filter: brightness(0.96); }
+    .open-btn:disabled { cursor: default; }
+    .open-btn.ok { background: linear-gradient(180deg, #34d399, #059669); }
+    .open-btn.err { background: linear-gradient(180deg, #f87171, #b91c1c); }
+
+    .open-spinner, .open-check, .open-cross { display: none; }
+    .open-btn.busy .open-label { visibility: hidden; }
+    .open-btn.busy .open-spinner {
+      display: block; position: absolute;
+      width: 1.4rem; height: 1.4rem; border-radius: 50%;
+      border: 3px solid rgba(255, 255, 255, 0.35); border-top-color: #fff;
+      animation: open-spin 0.7s linear infinite;
+    }
+    .open-btn.ok .open-label, .open-btn.err .open-label { visibility: hidden; }
+    .open-btn.ok .open-check,
+    .open-btn.err .open-cross { display: block; position: absolute; font-size: 1.4rem; }
+    @keyframes open-spin { to { transform: rotate(360deg); } }
 {% endblock %}
 
 {% block body %}
 <main class="wide">
+  <section class="panel-card open-now">
+    <button id="admin-open-btn" class="open-btn" type="button"
+            data-csrf="{{ csrf_token }}" aria-label="Open the gate now">
+      <span class="open-spinner" aria-hidden="true"></span>
+      <span class="open-check" aria-hidden="true">✓</span>
+      <span class="open-cross" aria-hidden="true">✕</span>
+      <span class="open-label">Open gate</span>
+    </button>
+  </section>
+
   <section class="panel-card">
     {% if not new_link_url %}
     <form id="create-form" method="post" action="{{ url_for('admin.create_link') }}">
@@ -192,5 +230,38 @@
       day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
     });
   });
+</script>
+<script>
+  (function () {
+    var btn = document.getElementById("admin-open-btn");
+    if (!btn) return;
+    var MIN_MS = 500;   // keep the spinner visible at least this long
+    var FLASH_MS = 1200; // how long the ✓ / ✕ result stays before reset
+
+    btn.addEventListener("click", async function () {
+      if (btn.disabled) return;
+      btn.disabled = true;
+      btn.classList.remove("ok", "err");
+      btn.classList.add("busy");
+      var started = performance.now();
+      var ok = false;
+      try {
+        var body = new FormData();
+        body.append("csrf_token", btn.dataset.csrf);
+        var resp = await fetch("/admin/open", { method: "POST", body: body });
+        ok = resp.ok;
+      } catch (e) { /* network failure -> treated as error */ }
+      var elapsed = performance.now() - started;
+      if (elapsed < MIN_MS) {
+        await new Promise(function (r) { setTimeout(r, MIN_MS - elapsed); });
+      }
+      btn.classList.remove("busy");
+      btn.classList.add(ok ? "ok" : "err");
+      setTimeout(function () {
+        btn.classList.remove("ok", "err");
+        btn.disabled = false;
+      }, FLASH_MS);
+    });
+  })();
 </script>
 {% endblock %}
