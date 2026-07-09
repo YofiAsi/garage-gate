@@ -1,4 +1,5 @@
 import hmac
+import logging
 import secrets
 from functools import wraps
 
@@ -18,6 +19,7 @@ from app import db, get_conn
 
 bp = Blueprint("admin", __name__)
 oauth = OAuth()
+log = logging.getLogger(__name__)
 
 
 def init_app(app):
@@ -121,3 +123,15 @@ def revoke_link(link_id):
     _check_csrf()
     db.revoke_link(get_conn(), link_id)
     return _render_panel(links_open=True)
+
+
+@bp.post("/open")
+@login_required
+def open_gate():
+    _check_csrf()
+    try:
+        current_app.config["GATE_OPENER"]()
+    except Exception:
+        log.exception("Home Assistant gate call failed")
+        return "", 500
+    return "", 204
