@@ -1,6 +1,23 @@
 {% extends "base.html" %}
 {% block title %}ללחוץ אאאארוך{% endblock %}
 
+{% block head_meta %}
+  {# Link-preview (Open Graph / Twitter) metadata — this is what WhatsApp,
+     Telegram, Facebook, etc. render when the gate link is shared. #}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="שער לחניה">
+  <meta property="og:title" content="שער לחניה">
+  <meta property="og:description" content="רוצה חניה חינם בתל אביב? רק היום! לינק לחניה במאפו 11! קרוב לים, קרוב ללב! כל מה שצריך זה להיות חברים שלנו ואנחנו נדאג לשאר.">
+  <meta property="og:image" content="{{ url_for('static', filename='og-image.png', _external=True) }}">
+  <meta property="og:url" content="{{ request.url }}">
+  <meta property="og:locale" content="he_IL">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="שער לחניה">
+  <meta name="twitter:description" content="רוצה חניה חינם בתל אביב? רק היום! לינק לחניה במאפו 11! קרוב לים, קרוב ללב! כל מה שצריך זה להיות חברים שלנו ואנחנו נדאג לשאר.">
+  <meta name="twitter:image" content="{{ url_for('static', filename='og-image.png', _external=True) }}">
+  <link rel="canonical" href="{{ request.base_url }}">
+{% endblock %}
+
 {% block style %}
     main.card { max-width: 24rem; }
     .stage { display: grid; gap: 1.5rem; justify-items: center; }
