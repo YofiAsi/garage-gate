@@ -8,6 +8,7 @@ from flask import (
     Blueprint,
     abort,
     current_app,
+    make_response,
     redirect,
     render_template,
     request,
@@ -20,6 +21,10 @@ from app import db, get_conn
 bp = Blueprint("admin", __name__)
 oauth = OAuth()
 log = logging.getLogger(__name__)
+
+# Bump when the PWA shell (manifest, icons, service worker) changes so clients
+# fetch a fresh service worker and drop their old caches.
+PWA_VERSION = "1"
 
 
 def init_app(app):
@@ -123,6 +128,41 @@ def revoke_link(link_id):
     _check_csrf()
     db.revoke_link(get_conn(), link_id)
     return _render_panel(links_open=True)
+
+
+# --- PWA: manifest, service worker, offline shell ---------------------------
+# These are intentionally unauthenticated so the browser (and the installed
+# app) can fetch them before or without an admin session.
+
+
+@bp.get("/manifest.webmanifest")
+def manifest():
+    resp = make_response(render_template("manifest.json"))
+    resp.mimetype = "application/manifest+json"
+    resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
+@bp.get("/sw.js")
+def service_worker():
+    resp = make_response(
+        render_template(
+            "sw.js",
+            sw_version=PWA_VERSION,
+            static_prefix=url_for("static", filename="").rstrip("/") + "/",
+        )
+    )
+    resp.mimetype = "text/javascript"
+    # Let the worker control the whole /admin/ scope and never let a stale copy
+    # of the worker script itself be served from HTTP cache.
+    resp.headers["Service-Worker-Allowed"] = "/admin/"
+    resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
+@bp.get("/offline")
+def offline():
+    return render_template("offline.html")
 
 
 @bp.post("/open")

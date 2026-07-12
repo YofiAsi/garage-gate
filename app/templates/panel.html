@@ -2,6 +2,15 @@
 {% block htmlattrs %}lang="en"{% endblock %}
 {% block title %}Garage Gate{% endblock %}
 
+{% block pwa %}
+  <link rel="manifest" href="{{ url_for('admin.manifest') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Gate">
+{% endblock %}
+
 {% block style %}
     main.wide {
       width: 100%; max-width: 26rem;
@@ -191,6 +200,15 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker
+        .register("{{ url_for('admin.service_worker') }}", { scope: "/admin/" })
+        .catch(function () { /* SW registration is best-effort */ });
+    });
+  }
+</script>
 <script>
   (function () {
     var dial = document.getElementById("hours-dial");
