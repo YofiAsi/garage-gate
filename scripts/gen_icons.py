@@ -58,10 +58,10 @@ def _padlock(draw, cx, cy, scale, color):
         [ax - r, ay - r, ax + r, ay + r],
         start=180, end=360, fill=color, width=stroke,
     )
-    # keyhole punched out of the body
+    # keyhole punched clean through the body so the red button shows through
     kr = 1.5 * scale
     kx, ky = sx(12), sy(15.5)
-    draw.ellipse([kx - kr, ky - kr, kx + kr, ky + kr], fill=BG_BASE)
+    draw.ellipse([kx - kr, ky - kr, kx + kr, ky + kr], fill=(0, 0, 0, 0))
 
 
 def make_icon(size, maskable=False):
@@ -83,8 +83,11 @@ def make_icon(size, maskable=False):
     base = img.convert("RGBA")
     base.paste(button, (0, 0), mask)
 
-    draw = ImageDraw.Draw(base)
-    _padlock(draw, cx, cy, btn_r / 14.0, (255, 255, 255))
+    # Draw the padlock on its own layer and erase the keyhole to transparent,
+    # then composite so the red button shows through the hole.
+    lock = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    _padlock(ImageDraw.Draw(lock), cx, cy, btn_r / 14.0, (255, 255, 255))
+    base = Image.alpha_composite(base, lock)
     return base.convert("RGB")
 
 
