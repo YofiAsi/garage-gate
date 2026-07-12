@@ -1,5 +1,6 @@
 import json
 import os
+from datetime import timedelta
 
 from flask import Flask, g
 
@@ -65,6 +66,10 @@ def create_app(config_overrides=None):
     )
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    # Keep admins logged in for a week. Sessions are marked permanent at login
+    # (see admin.auth_callback); Flask refreshes the expiry on each request, so
+    # the week rolls forward as long as the panel is used.
+    app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=7)
 
     # Trust the reverse proxy's X-Forwarded-Proto/Host (Traefik in production)
     # so url_for(_external=True) builds https URLs behind SSL termination.
