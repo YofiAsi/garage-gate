@@ -80,6 +80,7 @@ def auth_callback():
         session.clear()
         return render_template("forbidden.html"), 403
     session.clear()
+    session.permanent = True
     session["email"] = email.lower()
     return redirect(url_for("admin.panel"))
 
