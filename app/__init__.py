@@ -66,8 +66,8 @@ def create_app(config_overrides=None):
     )
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-    # Keep admins logged in for a week. Sessions are marked permanent at login
-    # (see admin.auth_callback); Flask refreshes the expiry on each request, so
+    # Keep members logged in for a week. Sessions are marked permanent at login
+    # (see panel.auth_callback); Flask refreshes the expiry on each request, so
     # the week rolls forward as long as the panel is used.
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=7)
 
@@ -92,11 +92,13 @@ def create_app(config_overrides=None):
         if conn is not None:
             conn.close()
 
-    from app import admin
+    from app import panel
     from app.public import bp as public_bp
 
-    admin.init_app(app)
-    app.register_blueprint(admin.bp, url_prefix="/admin")
+    panel.init_app(app)
+    # Both live at the root; literal routes (/login, /links, ...) take
+    # precedence over the public /<token> route.
+    app.register_blueprint(panel.bp)
     app.register_blueprint(public_bp)
 
     return app

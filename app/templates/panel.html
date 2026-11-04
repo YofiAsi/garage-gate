@@ -3,7 +3,7 @@
 {% block title %}Garage Gate{% endblock %}
 
 {% block pwa %}
-  <link rel="manifest" href="{{ url_for('admin.manifest') }}">
+  <link rel="manifest" href="{{ url_for('panel.manifest') }}">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -14,7 +14,7 @@
 {% block style %}
     main.wide {
       width: 100%; max-width: 26rem;
-      display: grid; gap: 1rem;
+      display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr);
     }
 
     .panel-card {
@@ -134,30 +134,73 @@
     .open-btn.ok .open-check,
     .open-btn.err .open-cross { display: block; position: absolute; font-size: 1.4rem; }
     @keyframes open-spin { to { transform: rotate(360deg); } }
+    .whoami {
+      display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+      font-size: 0.82rem; color: var(--muted); min-width: 0;
+    }
+    .whoami > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .link-btn {
+      font: inherit; font-size: 0.82rem; cursor: pointer; flex-shrink: 0;
+      color: var(--muted); background: transparent; border: 0; padding: 0.25rem 0;
+      text-decoration: underline;
+    }
+    .role-badge {
+      display: inline-block; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.04em;
+      text-transform: uppercase; border-radius: 999px; padding: 0.1rem 0.5rem;
+      border: 1px solid currentColor; flex-shrink: 0;
+    }
+    .role-admin { color: #fca5a5; }
+    .role-resident { color: #7dd3fc; }
+    .role-guest { color: #c4b5fd; }
+    .link-row .meta { overflow-wrap: anywhere; }
+    .link-row .who { color: var(--text); }
+    .add-member { display: flex; gap: 0.4rem; padding: 0.5rem 0 0.75rem; }
+    .add-member input, .add-member select {
+      font: inherit; font-size: 0.85rem; color: var(--text);
+      background: rgba(255, 255, 255, 0.06); border: 1px solid var(--card-border);
+      border-radius: 8px; padding: 0.45rem 0.55rem; min-width: 0;
+    }
+    .add-member input { flex: 1; width: 0; }
+    .add-member select option { color: #0b1120; }
+    .add-btn {
+      font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; color: #fff;
+      background: linear-gradient(180deg, #7dd3fc, #38bdf8); border: 0;
+      border-radius: 8px; padding: 0.45rem 0.8rem; flex-shrink: 0;
+    }
+    .activity-row .when { color: var(--muted); font-size: 0.78rem; flex-shrink: 0; }
+    .failed { color: #f87171; }
 {% endblock %}
 
 {% block body %}
 <main class="wide">
+  <header class="whoami">
+    <span>{{ email }} <span class="role-badge role-{{ role }}">{{ role }}</span></span>
+    <form method="post" action="{{ url_for('panel.logout') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="link-btn" type="submit">Log out</button>
+    </form>
+  </header>
   <section class="panel-card open-now">
-    <button id="admin-open-btn" class="open-btn" type="button"
-            data-csrf="{{ csrf_token }}" aria-label="Open the gate now">
+    <button id="open-btn" class="open-btn" type="button"
+            data-csrf="{{ csrf_token }}" data-url="{{ url_for('panel.open_gate') }}"
+            aria-label="Open the gate now">
       <span class="open-spinner" aria-hidden="true"></span>
       <span class="open-check" aria-hidden="true">✓</span>
       <span class="open-cross" aria-hidden="true">✕</span>
       <span class="open-label">Open gate</span>
     </button>
   </section>
-
+  {% if can_create_links %}
   <section class="panel-card">
     {% if not new_link_url %}
-    <form id="create-form" method="post" action="{{ url_for('admin.create_link') }}">
+    <form id="create-form" method="post" action="{{ url_for('panel.create_link') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <input type="hidden" name="amount" id="amount-field" value="1">
       <input type="hidden" name="unit" value="hours">
       <div class="duration">
         <div class="duration-label">Duration</div>
         <div class="duration-value" id="hours-display">1<span>hour</span></div>
-        <input type="range" id="hours-dial" min="1" max="24" value="1" aria-label="Hours">
+        <input type="range" id="hours-dial" min="1" max="{{ max_hours }}" value="1" aria-label="Hours">
         <button class="create-btn" type="submit">Create link</button>
       </div>
     </form>
@@ -173,20 +216,20 @@
       </div>
       <button class="show-url-btn" type="button" onclick="toggleUrl(this)">Show</button>
       <code id="new-url" hidden>{{ new_link_url }}</code>
-      <a class="create-btn" href="{{ url_for('admin.panel') }}">Create another</a>
+      <a class="create-btn" href="{{ url_for('panel.home') }}">Create another</a>
     </div>
     {% endif %}
   </section>
-
-  <details class="links"{% if links_open %} open{% endif %}>
-    <summary>Active links ({{ links | length }})</summary>
+  <details class="links"{% if open_section == 'links' %} open{% endif %}>
+    <summary>{% if is_admin %}Active links{% else %}My active links{% endif %} ({{ links | length }})</summary>
     {% if links %}
       {% for link in links %}
       <div class="link-row">
         <div class="meta">
+          {% if is_admin %}<div class="who">{{ link.created_by or "unknown" }}</div>{% endif %}
           <div class="expires">expires <span data-ts="{{ link.expires_at }}"></span></div>
         </div>
-        <form method="post" action="{{ url_for('admin.revoke_link', link_id=link.id) }}">
+        <form method="post" action="{{ url_for('panel.revoke_link', link_id=link.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button class="revoke-btn" type="submit">Revoke</button>
         </form>
@@ -196,15 +239,72 @@
     <p class="empty">No active links</p>
     {% endif %}
   </details>
+  {% endif %}
+  {% if is_admin %}
+  <details class="links" id="members"{% if open_section == 'members' %} open{% endif %}>
+    <summary>Members ({{ admins | length + members | length }})</summary>
+    <form class="add-member" method="post" action="{{ url_for('panel.add_member') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="email" name="email" placeholder="email@gmail.com" required aria-label="Email">
+      <select name="role" aria-label="Role">
+        <option value="resident">Resident</option>
+        <option value="guest">Guest</option>
+      </select>
+      <button class="add-btn" type="submit">Add</button>
+    </form>
+    {% for admin_email in admins %}
+    <div class="link-row">
+      <div class="meta">{{ admin_email }}</div>
+      <span class="role-badge role-admin">admin</span>
+    </div>
+    {% endfor %}
+    {% for m in members %}
+    <div class="link-row member-row">
+      <div class="meta">{{ m.email }}</div>
+      <span class="role-badge role-{{ m.role }}">{{ m.role }}</span>
+      <form method="post" action="{{ url_for('panel.remove_member') }}"
+            onsubmit="return confirm('Remove {{ m.email }}?{% if m.role == 'resident' %} Their active links will be revoked.{% endif %}')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="email" value="{{ m.email }}">
+        <button class="revoke-btn" type="submit">Remove</button>
+      </form>
+    </div>
+    {% endfor %}
+  </details>
+  <details class="links" id="activity"{% if open_section == 'activity' %} open{% endif %}>
+    <summary>Activity</summary>
+    {% if activity %}
+      {% for a in activity %}
+      <div class="link-row activity-row">
+        <div class="meta">
+          <div>{{ a.actor or "unknown" }}</div>
+          <div class="expires">
+            {%- if a.action == 'gate_open' %}opened the gate
+            {%- elif a.action == 'link_open' %}gate opened via their link #{{ a.link_id }}
+            {%- elif a.action == 'link_create' %}created link #{{ a.link_id }}{% if a.detail %} ({{ a.detail }}){% endif %}
+            {%- elif a.action == 'link_revoke' %}revoked link #{{ a.link_id }}
+            {%- elif a.action == 'member_add' %}added {{ a.detail }}
+            {%- elif a.action == 'member_remove' %}removed {{ a.detail }}
+            {%- else %}{{ a.action }}{% endif %}
+            {%- if a.detail == 'failed' %} <span class="failed">(failed)</span>{% endif %}
+          </div>
+        </div>
+        <span class="when" data-ts="{{ a.at }}"></span>
+      </div>
+      {% endfor %}
+    {% else %}
+    <p class="empty">No activity yet</p>
+    {% endif %}
+  </details>
+  {% endif %}
 </main>
 {% endblock %}
-
 {% block scripts %}
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       navigator.serviceWorker
-        .register("{{ url_for('admin.service_worker') }}", { scope: "/admin/" })
+        .register("{{ url_for('panel.service_worker') }}", { scope: "/" })
         .catch(function () { /* SW registration is best-effort */ });
     });
   }
@@ -251,7 +351,7 @@
 </script>
 <script>
   (function () {
-    var btn = document.getElementById("admin-open-btn");
+    var btn = document.getElementById("open-btn");
     if (!btn) return;
     var MIN_MS = 500;   // keep the spinner visible at least this long
     var FLASH_MS = 1200; // how long the ✓ / ✕ result stays before reset
@@ -266,7 +366,7 @@
       try {
         var body = new FormData();
         body.append("csrf_token", btn.dataset.csrf);
-        var resp = await fetch("/admin/open", { method: "POST", body: body });
+        var resp = await fetch(btn.dataset.url, { method: "POST", body: body });
         ok = resp.ok;
       } catch (e) { /* network failure -> treated as error */ }
       var elapsed = performance.now() - started;

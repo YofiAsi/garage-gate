@@ -4,7 +4,7 @@ from tests.conftest import ADMIN
 
 
 def _capture_login_redirect(client, monkeypatch, headers=None):
-    from app import admin
+    from app import panel as admin
 
     captured = {}
 
@@ -13,18 +13,18 @@ def _capture_login_redirect(client, monkeypatch, headers=None):
         return "", 302
 
     monkeypatch.setattr(admin.oauth.google, "authorize_redirect", fake_authorize_redirect)
-    client.get("/admin/login", base_url=ADMIN, headers=headers or {})
+    client.get("/login", base_url=ADMIN, headers=headers or {})
     return captured["uri"]
 
 
 def test_redirect_uri_is_https_behind_proxy(client, monkeypatch):
     uri = _capture_login_redirect(client, monkeypatch, {"X-Forwarded-Proto": "https"})
-    assert uri == "https://garage.test/admin/auth/callback"
+    assert uri == "https://garage.test/auth/callback"
 
 
 def test_redirect_uri_is_http_without_proxy(client, monkeypatch):
     uri = _capture_login_redirect(client, monkeypatch)
-    assert uri == "http://garage.test/admin/auth/callback"
+    assert uri == "http://garage.test/auth/callback"
 
 
 def test_redirect_uri_is_https_via_cloudflare_visitor_header(client, monkeypatch):
@@ -36,19 +36,19 @@ def test_redirect_uri_is_https_via_cloudflare_visitor_header(client, monkeypatch
         monkeypatch,
         {"X-Forwarded-Proto": "http", "CF-Visitor": '{"scheme":"https"}'},
     )
-    assert uri == "https://garage.test/admin/auth/callback"
+    assert uri == "https://garage.test/auth/callback"
 
 
 def test_cf_visitor_with_http_scheme_does_not_force_https(client, monkeypatch):
     uri = _capture_login_redirect(client, monkeypatch, {"CF-Visitor": '{"scheme":"http"}'})
-    assert uri == "http://garage.test/admin/auth/callback"
+    assert uri == "http://garage.test/auth/callback"
 
 
 def test_malformed_cf_visitor_header_is_ignored(client, monkeypatch):
     uri = _capture_login_redirect(
         client, monkeypatch, {"X-Forwarded-Proto": "https", "CF-Visitor": "not-json"}
     )
-    assert uri == "https://garage.test/admin/auth/callback"
+    assert uri == "https://garage.test/auth/callback"
 
 
 def test_insecure_http_flag_relaxes_session_cookie(tmp_path):

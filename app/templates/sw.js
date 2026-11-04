@@ -1,5 +1,5 @@
 /* Garage Gate service worker.
- * Rendered by Flask (app.admin.service_worker) so the cache version and asset
+ * Rendered by Flask (app.panel.service_worker) so the cache version and asset
  * URLs stay in sync with the deployed build. Bump CACHE by changing the app
  * version below or the template — clients pick up the new worker automatically.
  */
@@ -13,11 +13,11 @@ const PRECACHE = [
   "{{ url_for('static', filename='icons/icon-512.png') }}",
   "{{ url_for('static', filename='icons/icon-maskable-512.png') }}",
   "{{ url_for('static', filename='icons/apple-touch-icon.png') }}",
-  "{{ url_for('admin.offline') }}",
-  "{{ url_for('admin.manifest') }}",
+  "{{ url_for('panel.offline') }}",
+  "{{ url_for('panel.manifest') }}",
 ];
 
-const OFFLINE_URL = "{{ url_for('admin.offline') }}";
+const OFFLINE_URL = "{{ url_for('panel.offline') }}";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
