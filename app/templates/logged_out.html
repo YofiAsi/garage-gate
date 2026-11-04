@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block htmlattrs %}lang="en"{% endblock %}
+{% block title %}Logged out{% endblock %}
+{% block content %}
+<span class="icon">👋</span>
+<h1>Logged out</h1>
+<p class="muted"><a href="{{ url_for('panel.login') }}" style="color: inherit">Log in again</a></p>
+{% endblock %}

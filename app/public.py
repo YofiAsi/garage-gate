@@ -21,11 +21,16 @@ def confirm(token):
 
 @bp.post("/<token>/open")
 def open_gate(token):
-    if not db.use_link(get_conn(), token):
+    conn = get_conn()
+    link = db.use_link(conn, token)
+    if link is None:
         return _invalid()
+    # Shared-link opens are attributed to whoever created the link.
     try:
         current_app.config["GATE_OPENER"]()
     except Exception:
         log.exception("Home Assistant gate call failed")
+        db.log_activity(conn, link["created_by"], "link_open", link_id=link["id"], detail="failed")
         return render_template("error.html"), 500
+    db.log_activity(conn, link["created_by"], "link_open", link_id=link["id"])
     return render_template("opening.html")
